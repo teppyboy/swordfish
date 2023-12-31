@@ -57,7 +57,7 @@ async fn parse_katana(ctx: &Context, msg: &Message) -> Result<(), String> {
     {
         trace!("Card drop detected, executing drop analyzer...");
         unsafe {
-            match katana::analyze_drop_message(&LEPTESS_ARC, msg) {
+            match katana::analyze_drop_message(&LEPTESS_ARC, msg).await {
                 Ok(_) => {
                     // msg.reply(ctx, "Drop analysis complete").await?;
                 }
@@ -120,12 +120,18 @@ async fn kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
         Some(content) => match content.parse::<u64>() {
             Ok(id) => id,
             Err(why) => {
-                helper::error_message(ctx, msg, format!("Failed to parse channel ID: `{:?}`", why)).await;
+                helper::error_message(ctx, msg, format!("Failed to parse channel ID: `{:?}`", why))
+                    .await;
                 return Ok(());
             }
         },
         None => {
-            helper::error_message(ctx, msg, "Usage: `kdropanalyze <channel ID> <message ID>`".to_string()).await;
+            helper::error_message(
+                ctx,
+                msg,
+                "Usage: `kdropanalyze <channel ID> <message ID>`".to_string(),
+            )
+            .await;
             return Ok(());
         }
     };
@@ -133,12 +139,18 @@ async fn kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
         Some(content) => match content.parse::<u64>() {
             Ok(id) => id,
             Err(why) => {
-                helper::error_message(ctx, msg, format!("Failed to parse message ID: `{:?}`", why)).await;
+                helper::error_message(ctx, msg, format!("Failed to parse message ID: `{:?}`", why))
+                    .await;
                 return Ok(());
             }
         },
         None => {
-            helper::error_message(ctx, msg, "Usage: `kdropanalyze <channel ID> <message ID>`".to_string()).await;
+            helper::error_message(
+                ctx,
+                msg,
+                "Usage: `kdropanalyze <channel ID> <message ID>`".to_string(),
+            )
+            .await;
             return Ok(());
         }
     };
@@ -162,7 +174,8 @@ async fn kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
                 msg.reply(ctx, "Drop analysis complete").await?;
             }
             Err(why) => {
-                helper::error_message(ctx, msg, format!("Failed to analyze drop: `{:?}`", why)).await;
+                helper::error_message(ctx, msg, format!("Failed to analyze drop: `{:?}`", why))
+                    .await;
             }
         };
     }

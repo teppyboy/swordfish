@@ -12,7 +12,10 @@ use swordfish_common::{debug, error, info, trace, warn};
 pub fn analyze_card(leptess: &LepTess, card: image::DynamicImage) {
     trace!("Analyzing card...");
     // Read the name and the series
-    let name_img = card.crop_imm(0, 0, 257, 29);
+    let name_img = card.crop_imm(22, 26, 206 - 22, 70 - 26);
+    name_img.save("debug/4-name.png").unwrap();
+    let series_img = card.crop_imm(22, 260, 206 - 22, 306 - 260);
+    series_img.save("debug/4-series.png").unwrap();
     // Read the print number
 }
 
