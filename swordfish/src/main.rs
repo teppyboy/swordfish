@@ -1,4 +1,5 @@
 use dotenvy::dotenv;
+use once_cell::sync::Lazy;
 use serenity::async_trait;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{CommandResult, Configuration, StandardFramework};
@@ -9,22 +10,30 @@ use serenity::model::{
 use serenity::prelude::*;
 use std::env;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 use swordfish_common::*;
 
 mod config;
+mod helper;
 mod katana;
+mod template;
 
 const GITHUB_URL: &str = "https://github.com/teppyboy/swordfish";
+static mut LEPTESS_ARC: Lazy<Arc<Mutex<tesseract::LepTess>>> = Lazy::new(|| {
+    trace!("Initializing Tesseract...");
+    Arc::new(Mutex::new(
+        tesseract::init_tesseract().expect("Failed to initialize Tesseract"),
+    ))
+});
 
 #[group]
-#[commands(ping, drop_analyze)]
+#[commands(ping, kdropanalyze)]
 struct General;
 struct Handler;
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
         if msg.author.id == ctx.cache.current_user().id {
-            trace!("Ignoring message from self");
             return;
         }
         trace!("Message: {}, sender: {}", msg.content, msg.author.id);
@@ -47,7 +56,17 @@ async fn parse_katana(ctx: &Context, msg: &Message) -> Result<(), String> {
             .contains("I'm dropping 3 cards since this server is currently active!")
     {
         trace!("Card drop detected, executing drop analyzer...");
-        katana::analyze_drop_message(msg).await?;
+        unsafe {
+            match katana::analyze_drop_message(&LEPTESS_ARC, msg) {
+                Ok(_) => {
+                    // msg.reply(ctx, "Drop analysis complete").await?;
+                }
+                Err(why) => {
+                    trace!("Failed to analyze drop: `{:?}`", why);
+                    // helper::error_message(ctx, msg, format!("Failed to analyze drop: `{:?}`", why)).await;
+                }
+            };
+        }
     }
     Ok(())
 }
@@ -95,32 +114,31 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
-async fn drop_analyze(ctx: &Context, msg: &Message) -> CommandResult {
-    let target_channel_id = match msg.content.split(" ").nth(1) {
+async fn kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
+    let mut args = msg.content.split(" ");
+    let target_channel_id = match args.nth(1) {
         Some(content) => match content.parse::<u64>() {
             Ok(id) => id,
             Err(why) => {
-                msg.reply(ctx, format!("Failed to parse message ID: {:?}", why))
-                    .await?;
+                helper::error_message(ctx, msg, format!("Failed to parse channel ID: `{:?}`", why)).await;
                 return Ok(());
             }
         },
         None => {
-            msg.reply(ctx, "No message ID provided").await?;
+            helper::error_message(ctx, msg, "Usage: `kdropanalyze <channel ID> <message ID>`".to_string()).await;
             return Ok(());
         }
     };
-    let target_msg_id = match msg.content.split(" ").nth(2) {
+    let target_msg_id = match args.nth(0) {
         Some(content) => match content.parse::<u64>() {
             Ok(id) => id,
             Err(why) => {
-                msg.reply(ctx, format!("Failed to parse message ID: {:?}", why))
-                    .await?;
+                helper::error_message(ctx, msg, format!("Failed to parse message ID: `{:?}`", why)).await;
                 return Ok(());
             }
         },
         None => {
-            msg.reply(ctx, "No message ID provided").await?;
+            helper::error_message(ctx, msg, "Usage: `kdropanalyze <channel ID> <message ID>`".to_string()).await;
             return Ok(());
         }
     };
@@ -134,19 +152,19 @@ async fn drop_analyze(ctx: &Context, msg: &Message) -> CommandResult {
     {
         Ok(msg) => msg,
         Err(why) => {
-            msg.reply(ctx, format!("Failed to get message: {:?}", why))
-                .await?;
+            helper::error_message(ctx, msg, format!("Failed to get message: `{:?}`", why)).await;
             return Ok(());
         }
     };
-    match katana::analyze_drop_message(&target_msg).await {
-        Ok(_) => {
-            msg.reply(ctx, "Drop analysis complete").await?;
-        }
-        Err(why) => {
-            msg.reply(ctx, format!("Failed to analyze drop: {:?}", why))
-                .await?;
-        }
-    };
+    unsafe {
+        match katana::analyze_drop_message(&LEPTESS_ARC, &target_msg).await {
+            Ok(_) => {
+                msg.reply(ctx, "Drop analysis complete").await?;
+            }
+            Err(why) => {
+                helper::error_message(ctx, msg, format!("Failed to analyze drop: `{:?}`", why)).await;
+            }
+        };
+    }
     Ok(())
 }
