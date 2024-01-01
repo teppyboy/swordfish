@@ -1,26 +1,55 @@
 use image::io::Reader as ImageReader;
-use serenity::framework::standard::macros::{command, group};
-use serenity::framework::standard::{CommandResult, Configuration, StandardFramework};
+use once_cell::sync::Lazy;
+use regex::Regex;
 use serenity::model::channel::Message;
 use serenity::prelude::*;
 use std::io::Cursor;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use swordfish_common::tesseract::LepTess;
+use swordfish_common::tesseract;
 use swordfish_common::{debug, error, info, trace, warn};
 
-pub fn analyze_card(leptess: &LepTess, card: image::DynamicImage) {
-    trace!("Analyzing card...");
+
+static TEXT_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"[A-Za-z ]").unwrap()
+});
+
+
+pub struct Card {
+    wishlist: Option<i32>,
+    name: String,
+    series: String,
+    print: i32,
+}
+
+pub fn analyze_card(card: image::DynamicImage) {
+    trace!("Spawning threads for analyzing card...");
     // Read the name and the series
-    let name_img = card.crop_imm(22, 26, 206 - 22, 70 - 26);
-    name_img.save("debug/4-name.png").unwrap();
-    let series_img = card.crop_imm(22, 260, 206 - 22, 306 - 260);
-    series_img.save("debug/4-series.png").unwrap();
+    let card_clone = card.clone();
+    let name_thread = thread::spawn(move || {
+        let mut leptess = tesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
+        let name_img = card_clone.crop_imm(22, 26, 202 - 22, 70 - 26);
+        name_img.save("debug/4-name.png").unwrap();
+        leptess.set_image_from_mem(&name_img.as_bytes()).unwrap();
+        leptess.get_utf8_text().expect("Failed to read name")
+    });
+    let card_clone = card.clone();
+    let series_thread = thread::spawn(move || {
+        let mut leptess = tesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
+        let series_img = card_clone.crop_imm(22, 276, 202 - 22, 330 - 276);
+        series_img.save("debug/4-series.png").unwrap();
+        leptess.set_image_from_mem(&series_img.as_bytes()).unwrap();
+        let series = leptess.get_utf8_text().unwrap();
+    });
+    let name = name_thread.join().unwrap();
+    trace!("Name: {}", name);
+    let series = series_thread.join().unwrap();
+    trace!("Series: {}", name);
     // Read the print number
 }
 
 pub async fn analyze_drop_message(
-    leptess_arc: &Arc<Mutex<LepTess>>,
+    leptess_arc: &Arc<Mutex<tesseract::LepTess>>,
     message: &Message,
 ) -> Result<(), String> {
     if message.attachments.len() < 1 {
@@ -67,7 +96,7 @@ pub async fn analyze_drop_message(
                     Ok(_) => {
                         trace!("Saved cropped card {}", i);
                         let leptess = leptess_mutex.lock().unwrap();
-                        analyze_card(&leptess, card_img);
+                        analyze_card(card_img);
                     }
                     Err(why) => return Err(format!("Failed to save image: {:?}", why)),
                 };

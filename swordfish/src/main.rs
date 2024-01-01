@@ -1,5 +1,5 @@
 use dotenvy::dotenv;
-use once_cell::sync::Lazy;
+use once_cell::unsync::Lazy;
 use serenity::async_trait;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{CommandResult, Configuration, StandardFramework};
@@ -20,9 +20,15 @@ mod template;
 
 const GITHUB_URL: &str = "https://github.com/teppyboy/swordfish";
 static mut LEPTESS_ARC: Lazy<Arc<Mutex<tesseract::LepTess>>> = Lazy::new(|| {
-    trace!("Initializing Tesseract...");
+    println!("Initializing Tesseract...");
     Arc::new(Mutex::new(
-        tesseract::init_tesseract().expect("Failed to initialize Tesseract"),
+        tesseract::init_tesseract(false).expect("Failed to initialize Tesseract"),
+    ))
+});
+static mut LEPTESS_NUMERIC_ARC: Lazy<Arc<Mutex<tesseract::LepTess>>> = Lazy::new(|| {
+    println!("Initializing Tesseract (numeric filter)...");
+    Arc::new(Mutex::new(
+        tesseract::init_tesseract(true).expect("Failed to initialize Tesseract (numeric filter)"),
     ))
 });
 
