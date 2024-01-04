@@ -1,5 +1,5 @@
 use dotenvy::dotenv;
-use once_cell::unsync::Lazy;
+
 use serenity::async_trait;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{CommandResult, Configuration, StandardFramework};
@@ -10,8 +10,10 @@ use serenity::model::{
 use serenity::prelude::*;
 use std::env;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::time::Instant;
 use swordfish_common::*;
+
+use crate::config::Config;
 
 mod config;
 mod helper;
@@ -19,18 +21,6 @@ mod katana;
 mod template;
 
 const GITHUB_URL: &str = "https://github.com/teppyboy/swordfish";
-static mut LEPTESS_ARC: Lazy<Arc<Mutex<tesseract::LepTess>>> = Lazy::new(|| {
-    println!("Initializing Tesseract...");
-    Arc::new(Mutex::new(
-        tesseract::init_tesseract(false).expect("Failed to initialize Tesseract"),
-    ))
-});
-static mut LEPTESS_NUMERIC_ARC: Lazy<Arc<Mutex<tesseract::LepTess>>> = Lazy::new(|| {
-    println!("Initializing Tesseract (numeric filter)...");
-    Arc::new(Mutex::new(
-        tesseract::init_tesseract(true).expect("Failed to initialize Tesseract (numeric filter)"),
-    ))
-});
 
 #[group]
 #[commands(ping, kdropanalyze)]
@@ -55,24 +45,22 @@ impl EventHandler for Handler {
     }
 }
 
-async fn parse_katana(ctx: &Context, msg: &Message) -> Result<(), String> {
+async fn parse_katana(_ctx: &Context, msg: &Message) -> Result<(), String> {
     if msg.content.contains("is dropping 3 cards!")
         || msg
             .content
             .contains("I'm dropping 3 cards since this server is currently active!")
     {
-        trace!("Card drop detected, executing drop analyzer...");
-        unsafe {
-            match katana::analyze_drop_message(&LEPTESS_ARC, msg).await {
-                Ok(_) => {
-                    // msg.reply(ctx, "Drop analysis complete").await?;
-                }
-                Err(why) => {
-                    trace!("Failed to analyze drop: `{:?}`", why);
-                    // helper::error_message(ctx, msg, format!("Failed to analyze drop: `{:?}`", why)).await;
-                }
-            };
-        }
+        // trace!("Card drop detected, executing drop analyzer...");
+        // match katana::analyze_drop_message(&LEPTESS_ARC, msg).await {
+        //     Ok(_) => {
+        //         // msg.reply(ctx, "Drop analysis complete").await?;
+        //     }
+        //     Err(why) => {
+        //         trace!("Failed to analyze drop: `{:?}`", why);
+        //         // helper::error_message(ctx, msg, format!("Failed to analyze drop: `{:?}`", why)).await;
+        //     }
+        // };
     }
     Ok(())
 }
@@ -81,14 +69,15 @@ async fn parse_katana(ctx: &Context, msg: &Message) -> Result<(), String> {
 async fn main() {
     dotenv().unwrap();
     let token = env::var("DISCORD_TOKEN").expect("Token not found");
-    let config: config::Config;
+    let config: Config;
     if Path::new("./config.toml").exists() {
         config = config::Config::load("./config.toml");
     } else {
         config = config::Config::new();
         config.save("./config.toml");
     }
-    let log_level = env::var("LOG_LEVEL").unwrap_or(config.log.level);
+    let level_str = config.log.level;
+    let log_level = env::var("LOG_LEVEL").unwrap_or(level_str);
     setup_logger(&log_level).expect("Failed to setup logger");
     info!("Swordfish v{} - {}", env!("CARGO_PKG_VERSION"), GITHUB_URL);
     info!("Log level: {}", log_level);
@@ -174,16 +163,28 @@ async fn kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
             return Ok(());
         }
     };
-    unsafe {
-        match katana::analyze_drop_message(&LEPTESS_ARC, &target_msg).await {
-            Ok(_) => {
-                msg.reply(ctx, "Drop analysis complete").await?;
+    let start = Instant::now();
+    match katana::analyze_drop_message(&target_msg).await {
+        Ok(cards) => {
+            let duration = start.elapsed();
+            let mut reply_str = String::new();
+            for card in cards {
+                // reply_str.push_str(&format!("{:?}\n", card));
+                reply_str.push_str(
+                    format!(
+                        ":heart: `{:?}` • `{}` • **{}** • {}\n",
+                        card.wishlist, card.print, card.name, card.series
+                    )
+                    .as_str(),
+                )
             }
-            Err(why) => {
-                helper::error_message(ctx, msg, format!("Failed to analyze drop: `{:?}`", why))
-                    .await;
-            }
-        };
-    }
+            reply_str.push_str(&format!("Time taken (to analyze): `{:?}`", duration));
+            msg.reply(ctx, reply_str).await?;
+        }
+        Err(why) => {
+            helper::error_message(ctx, msg, format!("Failed to analyze drop: `{:?}`", why))
+                .await;
+        }
+    };
     Ok(())
 }

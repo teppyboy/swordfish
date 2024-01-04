@@ -5,6 +5,9 @@ pub fn init_tesseract(numeric_only: bool) -> Result<LepTess, String> {
         Ok(lep_tess) => lep_tess,
         Err(why) => return Err(format!("Failed to initialize Tesseract: {:?}", why)),
     };
+    lep_tess.set_variable(Variable::TesseditPagesegMode, "6").unwrap();
+    // Use LSTM only.
+    lep_tess.set_variable(Variable::TesseditOcrEngineMode, "1").unwrap();
     if numeric_only {
         match lep_tess.set_variable(Variable::TesseditCharWhitelist, "0123456789") {
             Ok(_) => (),
