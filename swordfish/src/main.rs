@@ -1,5 +1,5 @@
 use dotenvy::dotenv;
-
+use once_cell::sync::Lazy;
 use serenity::async_trait;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{CommandResult, Configuration, StandardFramework};
@@ -21,9 +21,10 @@ mod katana;
 mod template;
 
 const GITHUB_URL: &str = "https://github.com/teppyboy/swordfish";
+static mut LOG_LEVEL: Lazy<String> = Lazy::new(|| "unknown".to_string());
 
 #[group]
-#[commands(ping, kdropanalyze)]
+#[commands(ping, kdropanalyze, info)]
 struct General;
 struct Handler;
 #[async_trait]
@@ -78,6 +79,20 @@ async fn main() {
     }
     let level_str = config.log.level;
     let log_level = env::var("LOG_LEVEL").unwrap_or(level_str);
+    unsafe {
+        // 1st way to kys
+        LOG_LEVEL = Lazy::new(|| {
+            let config: Config;
+            if Path::new("./config.toml").exists() {
+                config = config::Config::load("./config.toml");
+            } else {
+                config = config::Config::new();
+                config.save("./config.toml");
+            }
+            let level_str = config.log.level;
+            env::var("LOG_LEVEL").unwrap_or(level_str)
+        });
+    }
     setup_logger(&log_level).expect("Failed to setup logger");
     info!("Swordfish v{} - {}", env!("CARGO_PKG_VERSION"), GITHUB_URL);
     info!("Log level: {}", log_level);
@@ -115,8 +130,13 @@ async fn kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
         Some(content) => match content.parse::<u64>() {
             Ok(id) => id,
             Err(why) => {
-                helper::error_message(ctx, msg, format!("Failed to parse channel ID: `{:?}`", why))
-                    .await;
+                helper::error_message(
+                    ctx,
+                    msg,
+                    format!("Failed to parse channel ID: `{:?}`", why),
+                    None,
+                )
+                .await;
                 return Ok(());
             }
         },
@@ -125,6 +145,7 @@ async fn kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
                 ctx,
                 msg,
                 "Usage: `kdropanalyze <channel ID> <message ID>`".to_string(),
+                None,
             )
             .await;
             return Ok(());
@@ -134,8 +155,13 @@ async fn kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
         Some(content) => match content.parse::<u64>() {
             Ok(id) => id,
             Err(why) => {
-                helper::error_message(ctx, msg, format!("Failed to parse message ID: `{:?}`", why))
-                    .await;
+                helper::error_message(
+                    ctx,
+                    msg,
+                    format!("Failed to parse message ID: `{:?}`", why),
+                    None,
+                )
+                .await;
                 return Ok(());
             }
         },
@@ -144,6 +170,7 @@ async fn kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
                 ctx,
                 msg,
                 "Usage: `kdropanalyze <channel ID> <message ID>`".to_string(),
+                None,
             )
             .await;
             return Ok(());
@@ -159,7 +186,13 @@ async fn kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
     {
         Ok(msg) => msg,
         Err(why) => {
-            helper::error_message(ctx, msg, format!("Failed to get message: `{:?}`", why)).await;
+            helper::error_message(
+                ctx,
+                msg,
+                format!("Failed to get message: `{:?}`", why),
+                None,
+            )
+            .await;
             return Ok(());
         }
     };
@@ -182,9 +215,33 @@ async fn kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
             msg.reply(ctx, reply_str).await?;
         }
         Err(why) => {
-            helper::error_message(ctx, msg, format!("Failed to analyze drop: `{:?}`", why))
-                .await;
+            helper::error_message(
+                ctx,
+                msg,
+                format!("Failed to analyze drop: `{:?}`", why),
+                None,
+            )
+            .await;
         }
     };
+    Ok(())
+}
+
+#[command]
+async fn info(ctx: &Context, msg: &Message) -> CommandResult {
+    unsafe {
+        let reply_str = format!(
+            "Swordfish v{} - {}\n\
+            Log level: `{}`\n\
+            Build type: `{}`\n\n\
+            Like my work? Consider donating to my [Ko-fi](https://ko-fi.com/teppyboy) or [Patreon](https://patreon.com/teppyboy)!\n\
+            ",
+            env!("CARGO_PKG_VERSION"),
+            GITHUB_URL,
+            LOG_LEVEL.as_str(),
+            env!("BUILD_PROFILE"),
+        );
+        helper::info_message(ctx, msg, reply_str, Some("Information".to_string())).await;
+    }
     Ok(())
 }

@@ -10,8 +10,6 @@ use swordfish_common::structs::Card;
 use swordfish_common::tesseract;
 use swordfish_common::{trace, warn};
 
-
-
 static TEXT_NUM_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[A-Za-z0-9]").unwrap());
 static ALLOWED_CHARS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"['-: ]").unwrap());
 
@@ -91,7 +89,9 @@ fn fix_tesseract_string(text: &mut String) {
     replace_string(text, "\n", " ");
     // Remove all non-alphanumeric characters
     trace!("Text: {}", text);
-    text.retain(|c| TEXT_NUM_REGEX.is_match(&c.to_string()) || ALLOWED_CHARS_REGEX.is_match(&c.to_string()));
+    text.retain(|c| {
+        TEXT_NUM_REGEX.is_match(&c.to_string()) || ALLOWED_CHARS_REGEX.is_match(&c.to_string())
+    });
     // Fix "mn" -> "III"
     trace!("Text: {}", text);
     if text.ends_with("mn") {
@@ -168,7 +168,10 @@ pub fn analyze_card(card: image::DynamicImage, count: u32) -> Card {
                 panic!("{}", format!("Failed to write image: {:?}", why));
             }
         };
-        save_image_if_trace(&series_img, format!("debug/4-{}-series.png", count).as_str());
+        save_image_if_trace(
+            &series_img,
+            format!("debug/4-{}-series.png", count).as_str(),
+        );
         leptess.set_image_from_mem(&buffer.get_mut()).unwrap();
         let mut series_str = leptess.get_utf8_text().expect("Failed to read name");
         fix_tesseract_string(&mut series_str);
