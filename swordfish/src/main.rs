@@ -234,7 +234,7 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
             "Swordfish v{} - {}\n\
             Log level: `{}`\n\
             Build type: `{}`\n\n\
-            Like my work? Consider donating to my [Ko-fi](https://ko-fi.com/teppyboy) or [Patreon](https://patreon.com/teppyboy)!\n\
+            Like my work? Consider donating to my [Ko-fi](https://ko-fi.com/tretrauit) or [Patreon](https://patreon.com/tretrauit)!\n\
             ",
             env!("CARGO_PKG_VERSION"),
             GITHUB_URL,
