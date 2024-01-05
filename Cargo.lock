@@ -1443,6 +1443,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "rusty-tesseract"
+version = "1.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e49fec5324d880080a07a9a1c83c9a3aab3c9128c26273ec56a8443cc9d3a334"
+dependencies = [
+ "image",
+ "subprocess",
+ "substring",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1677,12 +1690,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
+name = "subprocess"
+version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c2e86926081dda636c546d8c5e641661049d7562a68f5488be4a1f7f66f6086"
+dependencies = [
+ "libc",
+ "winapi",
+]
+
+[[package]]
+name = "substring"
+version = "1.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42ee6433ecef213b2e72f587ef64a2f5943e7cd16fbd82dbe8bc07486c534c86"
+dependencies = [
+ "autocfg",
+]
+
+[[package]]
 name = "swordfish"
 version = "0.1.0"
 dependencies = [
  "dotenvy",
  "image",
- "once_cell",
  "regex",
  "serde",
  "serenity",
@@ -1699,6 +1730,7 @@ dependencies = [
  "humantime",
  "leptess",
  "log",
+ "rusty-tesseract",
  "tracing",
  "tracing-subscriber",
 ]

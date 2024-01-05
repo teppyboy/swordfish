@@ -1,21 +1,26 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FileLog {
     pub enabled: bool,
     pub path: String,
 }
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Log {
     pub level: String,
     pub file: FileLog,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Tesseract {
+    pub backend: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub log: Log,
+    pub tesseract: Tesseract,
 }
 
 impl Config {
@@ -27,6 +32,9 @@ impl Config {
                     enabled: false,
                     path: "swordfish.log".to_string(),
                 },
+            },
+            tesseract: Tesseract {
+                backend: "libtesseract".to_string(),
             },
         }
     }

@@ -1,17 +1,18 @@
 use image::imageops::colorops::contrast_in_place;
 use image::io::Reader as ImageReader;
-use image::ImageFormat;
-use once_cell::sync::Lazy;
+use image::{DynamicImage, ImageFormat};
 use regex::Regex;
 use serenity::model::channel::Message;
 use std::io::Cursor;
-use std::{env, thread};
+use std::sync::LazyLock;
+use std::thread;
 use swordfish_common::structs::Card;
-use swordfish_common::tesseract;
+use swordfish_common::tesseract::{libtesseract, subprocess};
 use swordfish_common::{trace, warn};
+use crate::CONFIG;
 
-static TEXT_NUM_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"[A-Za-z0-9]").unwrap());
-static ALLOWED_CHARS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"['-: ]").unwrap());
+static TEXT_NUM_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[A-Za-z0-9]").unwrap());
+static ALLOWED_CHARS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[!'-: ]").unwrap());
 
 fn replace_string(text: &mut String, from: &str, to: &str) -> bool {
     match text.find(from) {
@@ -65,23 +66,33 @@ fn fix_tesseract_string(text: &mut String) {
             Some(c) => c,
             None => continue,
         };
+        let mut rm_prev: i8 = 0;
+        trace!("Prev char: {}", prev_char);
+        if ['-'].contains(&prev_char) {
+            rm_prev = 1;
+            text.remove(i - 1);
+        }
+        // Fix for "Asobi ni Iku lo Asobi ni Oide" -> "Asobi ni Iku yo! Asobi ni Oide"
+        if prev_char == 'l' {
+            let prev_prev_char = match text.chars().nth(i - 2) {
+                Some(c) => c,
+                None => continue,
+            };
+            trace!("Prev prev char: {}", prev_prev_char);
+            if prev_prev_char == 'o' {
+                rm_prev = -1;
+                text.remove(i - 2);
+                text.remove(i - 2);
+                text.insert_str(i - 2, "yo!")
+            }
+        }
         let next_char = match text.chars().nth(i + 1) {
             Some(c) => c,
             None => break,
         };
-        let mut rm_prev: bool = false;
-        trace!("Prev char: {}", prev_char);
-        if ['-'].contains(&prev_char) {
-            rm_prev = true;
-            text.remove(i - 1);
-        }
         trace!("Next char: {}", next_char);
         if ['.'].contains(&next_char) {
-            if rm_prev {
-                text.remove(i);
-            } else {
-                text.remove(i + 1);
-            }
+            text.remove((i as i8 + 1 - rm_prev) as usize);
         }
     }
     // Replace "\n" with " "
@@ -117,10 +128,7 @@ fn fix_tesseract_string(text: &mut String) {
 }
 
 fn save_image_if_trace(img: &image::DynamicImage, path: &str) {
-    let log_lvl = match env::var("LOG_LEVEL") {
-        Ok(log_lvl) => log_lvl,
-        Err(_) => return,
-    };
+    let log_lvl = CONFIG.get().unwrap().log.level.as_str();
     if log_lvl == "trace" {
         match img.save(path) {
             Ok(_) => {
@@ -133,13 +141,14 @@ fn save_image_if_trace(img: &image::DynamicImage, path: &str) {
     }
 }
 
-pub fn analyze_card(card: image::DynamicImage, count: u32) -> Card {
+pub fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) -> Card {
     trace!("Spawning threads for analyzing card...");
     // Read the name and the series
     let card_clone = card.clone();
     let name_thread = thread::spawn(move || {
-        let mut leptess = tesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
-        // let binding = tesseract::init_tesseract_quick(false);
+        let mut leptess =
+            libtesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
+        // let binding = tesseract::get_tesseract_from_vec(false);
         // let mut leptess = binding.lock().unwrap();
         let name_img = card_clone.crop_imm(22, 26, 204 - 22, 70 - 26);
         let mut buffer: Cursor<Vec<u8>> = Cursor::new(Vec::new());
@@ -157,8 +166,9 @@ pub fn analyze_card(card: image::DynamicImage, count: u32) -> Card {
     });
     let card_clone = card.clone();
     let series_thread = thread::spawn(move || {
-        let mut leptess = tesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
-        // let binding = tesseract::init_tesseract_quick(false);
+        let mut leptess =
+            libtesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
+        // let binding = tesseract::get_tesseract_from_vec(false);
         // let mut leptess = binding.lock().unwrap();
         let series_img = card_clone.crop_imm(22, 276, 204 - 22, 330 - 276);
         let mut buffer: Cursor<Vec<u8>> = Cursor::new(Vec::new());
@@ -189,6 +199,58 @@ pub fn analyze_card(card: image::DynamicImage, count: u32) -> Card {
         series,
         print: 0,
     };
+}
+
+pub fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> Card {
+    trace!("Spawning threads for analyzing card...");
+    // Read the name and the series
+    let card_clone = card.clone();
+    let name_thread = thread::spawn(move || {
+        let name_img = card_clone.crop_imm(22, 26, 204 - 22, 70 - 26);
+        let img = subprocess::Image::from_dynamic_image(&name_img).unwrap();
+        save_image_if_trace(
+            &name_img,
+            format!("debug/4-subprocess-{}-name.png", count).as_str(),
+        );
+        let mut name_str = subprocess::image_to_string(&img).unwrap();
+        fix_tesseract_string(&mut name_str);
+        name_str
+    });
+    let card_clone = card.clone();
+    let series_thread = thread::spawn(move || {
+        let series_img = card_clone.crop_imm(22, 276, 204 - 22, 330 - 276);
+        let img = subprocess::Image::from_dynamic_image(&series_img).unwrap();
+        save_image_if_trace(
+            &series_img,
+            format!("debug/4-subprocess-{}-series.png", count).as_str(),
+        );
+        let mut series_str = subprocess::image_to_string(&img).unwrap();
+        fix_tesseract_string(&mut series_str);
+        series_str
+    });
+    let name = name_thread.join().unwrap();
+    trace!("Name: {}", name);
+    let series = series_thread.join().unwrap();
+    trace!("Series: {}", series);
+    // TODO: Read the print number
+    // TODO: Read the wishlist number (from our database)
+    return Card {
+        wishlist: None,
+        name,
+        series,
+        print: 0,
+    };
+}
+
+fn execute_analyze_drop(image: DynamicImage, count: u32) -> Card {
+    let config = CONFIG.get().unwrap();
+    match config.tesseract.backend.as_str() {
+        "libtesseract" => analyze_card_libtesseract(image, count),
+        "subprocess" => analyze_card_subprocess(image, count),
+        _ => {
+            panic!("Invalid Tesseract backend: {}", config.tesseract.backend);
+        }
+    }
 }
 
 pub async fn analyze_drop_message(message: &Message) -> Result<Vec<Card>, String> {
@@ -228,11 +290,10 @@ pub async fn analyze_drop_message(message: &Message) -> Result<Vec<Card>, String
         trace!("Cropping card {} ({}, {}, {}, {})", i, x, y, width, height);
         let card_img = img.crop_imm(x, y, width, height);
         save_image_if_trace(&card_img, &format!("debug/3-cropped-{}.png", i));
-        let job = move || {
+        jobs.push(move || {
             trace!("Analyzing card {}", i);
-            Ok((i, analyze_card(card_img, i)))
-        };
-        jobs.push(job);
+            Ok((i, execute_analyze_drop(card_img, i)))
+        });
     }
     let mut tasks: Vec<thread::JoinHandle<Result<(u32, Card), String>>> = Vec::new();
     for job in jobs {

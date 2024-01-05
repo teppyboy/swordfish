@@ -10,5 +10,6 @@ fern = "0.6.2"
 humantime = "2.1.0"
 leptess = "0.14.0"
 log = "0.4.20"
+rusty-tesseract = "1.1.9"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

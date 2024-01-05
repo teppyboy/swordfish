@@ -1,3 +1,4 @@
+#![feature(lazy_cell)]
 pub use log;
 pub use tracing::{debug, error, info, trace, warn};
 use tracing_subscriber::{self, fmt, EnvFilter};
@@ -10,6 +11,7 @@ pub fn setup_logger(level: &str) -> Result<(), fern::InitError> {
         .with_level(true)
         .with_target(true)
         .with_thread_ids(false)
+        .with_line_number(true)
         .with_thread_names(false);
     let filter = EnvFilter::builder()
         .from_env()
