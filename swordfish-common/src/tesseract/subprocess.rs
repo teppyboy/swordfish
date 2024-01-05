@@ -12,10 +12,7 @@ static TESSERACT_ARGS: LazyLock<Args> = LazyLock::new(|| Args {
 
 static TESSERACT_NUMERIC_ARGS: LazyLock<Args> = LazyLock::new(|| Args {
     lang: "eng".to_string(),
-    config_variables: HashMap::from([(
-        "tessedit_char_whitelist".into(),
-        "0123456789".into(),
-    )]),
+    config_variables: HashMap::from([("tessedit_char_whitelist".into(), "0123456789".into())]),
     psm: Some(6),
     dpi: None,
     oem: Some(1),

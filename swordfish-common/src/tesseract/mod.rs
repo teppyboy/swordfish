@@ -1,2 +1,2 @@
-pub mod subprocess;
 pub mod libtesseract;
+pub mod subprocess;
