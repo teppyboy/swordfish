@@ -3,10 +3,11 @@ pub use log;
 pub use tracing::{debug, error, info, trace, warn};
 use tracing_subscriber::{self, fmt, EnvFilter};
 pub mod constants;
+pub mod database;
 pub mod structs;
 pub mod tesseract;
 
-pub fn setup_logger(level: &str) -> Result<(), fern::InitError> {
+pub fn setup_logger(level: &str) -> Result<(), ()> {
     let formatter = fmt::format()
         .with_level(true)
         .with_target(true)

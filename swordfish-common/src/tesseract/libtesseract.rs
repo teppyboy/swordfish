@@ -1,7 +1,8 @@
 pub use leptess::{LepTess, Variable};
-use std::{sync::{
-    Arc, Mutex, LazyLock
-}, thread};
+use std::{
+    sync::{Arc, LazyLock, Mutex},
+    thread,
+};
 
 static TESSERACT: LazyLock<Arc<Mutex<LepTess>>> = LazyLock::new(|| {
     let mut lep_tess = match LepTess::new(None, "eng") {
@@ -10,7 +11,9 @@ static TESSERACT: LazyLock<Arc<Mutex<LepTess>>> = LazyLock::new(|| {
     };
     // lep_tess.set_variable(Variable::TesseditPagesegMode, "6").unwrap();
     // Use LSTM only.
-    lep_tess.set_variable(Variable::TesseditOcrEngineMode, "2").unwrap();
+    lep_tess
+        .set_variable(Variable::TesseditOcrEngineMode, "2")
+        .unwrap();
     Arc::new(Mutex::new(lep_tess))
 });
 
@@ -18,10 +21,10 @@ static mut TESSERACT_VEC: Vec<Arc<Mutex<LepTess>>> = Vec::new();
 
 ///
 /// Get a Tesseract instance.
-/// 
+///
 /// Deprecated because it provides no performance benefit, if you really need
 /// then use get_tesseract_from_vec.
-/// 
+///
 pub fn get_tesseract(numeric_only: bool) -> Arc<Mutex<LepTess>> {
     TESSERACT.clone()
 }
@@ -37,8 +40,7 @@ pub unsafe fn get_tesseract_from_vec(numeric_only: bool) -> Arc<Mutex<LepTess>> 
             });
         }
         lep_tess = Arc::new(Mutex::new(init_tesseract(numeric_only).unwrap()));
-    } 
-    else {
+    } else {
         lep_tess = TESSERACT_VEC.pop().unwrap();
         thread::spawn(move || unsafe {
             let ocr = init_tesseract(numeric_only).unwrap();
@@ -53,9 +55,13 @@ pub fn init_tesseract(numeric_only: bool) -> Result<LepTess, String> {
         Ok(lep_tess) => lep_tess,
         Err(why) => return Err(format!("Failed to initialize Tesseract: {:?}", why)),
     };
-    lep_tess.set_variable(Variable::TesseditPagesegMode, "6").unwrap();
+    lep_tess
+        .set_variable(Variable::TesseditPagesegMode, "6")
+        .unwrap();
     // Use LSTM only.
-    lep_tess.set_variable(Variable::TesseditOcrEngineMode, "1").unwrap();
+    lep_tess
+        .set_variable(Variable::TesseditOcrEngineMode, "1")
+        .unwrap();
     if numeric_only {
         match lep_tess.set_variable(Variable::TesseditCharWhitelist, "0123456789") {
             Ok(_) => (),
