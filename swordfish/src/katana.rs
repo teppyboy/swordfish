@@ -57,6 +57,14 @@ fn fix_tesseract_string(text: &mut String) {
     // This is usually the corner of the card
     trace!("Text: {}", text);
     replace_string(text, "A\n", "");
+    // Workaround for '“NO'
+    // This is usually the left bottom corner of the card
+    trace!("Text: {}", text);
+    if text.ends_with(r##"“NO"##) {
+        for _ in 0..3 {
+            text.pop();
+        }
+    }
     // Workaround for "\n." (and others in the future)
     for (i, c) in text.clone().chars().enumerate() {
         if c != '\n' {
@@ -113,6 +121,9 @@ fn fix_tesseract_string(text: &mut String) {
     // Fix "1ll" -> "III"
     trace!("Text: {}", text);
     replace_string(text, "1ll", "III");
+    // Fix "lll" -> "!!!"
+    trace!("Text: {}", text);
+    replace_string(text, "lll", "!!!");
     // Replace multiple spaces with one space
     trace!("Text: {}", text);
     while replace_string(text, "  ", " ") {

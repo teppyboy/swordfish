@@ -16,6 +16,12 @@ static TESSERACT: LazyLock<Arc<Mutex<LepTess>>> = LazyLock::new(|| {
 
 static mut TESSERACT_VEC: Vec<Arc<Mutex<LepTess>>> = Vec::new();
 
+///
+/// Get a Tesseract instance.
+/// 
+/// Deprecated because it provides no performance benefit, if you really need
+/// then use get_tesseract_from_vec.
+/// 
 pub fn get_tesseract(numeric_only: bool) -> Arc<Mutex<LepTess>> {
     TESSERACT.clone()
 }
