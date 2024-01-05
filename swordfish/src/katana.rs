@@ -1,3 +1,4 @@
+use crate::CONFIG;
 use image::imageops::colorops::contrast_in_place;
 use image::io::Reader as ImageReader;
 use image::{DynamicImage, ImageFormat};
@@ -5,11 +6,10 @@ use regex::Regex;
 use serenity::model::channel::Message;
 use std::io::Cursor;
 use std::sync::LazyLock;
-use std::thread;
 use swordfish_common::structs::Card;
 use swordfish_common::tesseract::{libtesseract, subprocess};
 use swordfish_common::{trace, warn};
-use crate::CONFIG;
+use tokio::task;
 
 static TEXT_NUM_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[A-Za-z0-9]").unwrap());
 static ALLOWED_CHARS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[!'-: ]").unwrap());
@@ -135,6 +135,12 @@ fn fix_tesseract_string(text: &mut String) {
         trace!("Removing leading space");
         text.remove(0);
     }
+    // Workaround if the last character is a space
+    trace!("Text: {}", text);
+    while text.ends_with(" ") {
+        trace!("Removing ending space");
+        text.pop();
+    }
     trace!("Text (final): {}", text);
 }
 
@@ -152,11 +158,11 @@ fn save_image_if_trace(img: &image::DynamicImage, path: &str) {
     }
 }
 
-pub fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) -> Card {
+pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) -> Card {
     trace!("Spawning threads for analyzing card...");
     // Read the name and the series
     let card_clone = card.clone();
-    let name_thread = thread::spawn(move || {
+    let name_thread = task::spawn_blocking(move || {
         let mut leptess =
             libtesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
         // let binding = tesseract::get_tesseract_from_vec(false);
@@ -176,7 +182,7 @@ pub fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) -> Card 
         name_str
     });
     let card_clone = card.clone();
-    let series_thread = thread::spawn(move || {
+    let series_thread = task::spawn_blocking(move || {
         let mut leptess =
             libtesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
         // let binding = tesseract::get_tesseract_from_vec(false);
@@ -198,9 +204,9 @@ pub fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) -> Card 
         fix_tesseract_string(&mut series_str);
         series_str
     });
-    let name = name_thread.join().unwrap();
+    let name = name_thread.await.unwrap();
     trace!("Name: {}", name);
-    let series = series_thread.join().unwrap();
+    let series = series_thread.await.unwrap();
     trace!("Series: {}", series);
     // TODO: Read the print number
     // TODO: Read the wishlist number (from our database)
@@ -212,11 +218,11 @@ pub fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) -> Card 
     };
 }
 
-pub fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> Card {
+pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> Card {
     trace!("Spawning threads for analyzing card...");
     // Read the name and the series
     let card_clone = card.clone();
-    let name_thread = thread::spawn(move || {
+    let name_thread = task::spawn_blocking(move || {
         let name_img = card_clone.crop_imm(22, 26, 204 - 22, 70 - 26);
         let img = subprocess::Image::from_dynamic_image(&name_img).unwrap();
         save_image_if_trace(
@@ -228,7 +234,7 @@ pub fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> Card {
         name_str
     });
     let card_clone = card.clone();
-    let series_thread = thread::spawn(move || {
+    let series_thread = task::spawn_blocking(move || {
         let series_img = card_clone.crop_imm(22, 276, 204 - 22, 330 - 276);
         let img = subprocess::Image::from_dynamic_image(&series_img).unwrap();
         save_image_if_trace(
@@ -239,9 +245,9 @@ pub fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> Card {
         fix_tesseract_string(&mut series_str);
         series_str
     });
-    let name = name_thread.join().unwrap();
+    let name = name_thread.await.unwrap();
     trace!("Name: {}", name);
-    let series = series_thread.join().unwrap();
+    let series = series_thread.await.unwrap();
     trace!("Series: {}", series);
     // TODO: Read the print number
     // TODO: Read the wishlist number (from our database)
@@ -253,11 +259,11 @@ pub fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> Card {
     };
 }
 
-fn execute_analyze_drop(image: DynamicImage, count: u32) -> Card {
+async fn execute_analyze_drop(image: DynamicImage, count: u32) -> Card {
     let config = CONFIG.get().unwrap();
     match config.tesseract.backend.as_str() {
-        "libtesseract" => analyze_card_libtesseract(image, count),
-        "subprocess" => analyze_card_subprocess(image, count),
+        "libtesseract" => analyze_card_libtesseract(image, count).await,
+        "subprocess" => analyze_card_subprocess(image, count).await,
         _ => {
             panic!("Invalid Tesseract backend: {}", config.tesseract.backend);
         }
@@ -301,18 +307,18 @@ pub async fn analyze_drop_message(message: &Message) -> Result<Vec<Card>, String
         trace!("Cropping card {} ({}, {}, {}, {})", i, x, y, width, height);
         let card_img = img.crop_imm(x, y, width, height);
         save_image_if_trace(&card_img, &format!("debug/3-cropped-{}.png", i));
-        jobs.push(move || {
+        jobs.push(async move {
             trace!("Analyzing card {}", i);
-            Ok((i, execute_analyze_drop(card_img, i)))
+            Ok((i, execute_analyze_drop(card_img, i).await))
         });
     }
-    let mut tasks: Vec<thread::JoinHandle<Result<(u32, Card), String>>> = Vec::new();
+    let mut handles: Vec<task::JoinHandle<Result<(u32, Card), String>>> = Vec::new();
     for job in jobs {
-        let task = thread::spawn(job);
-        tasks.push(task);
+        let handle = task::spawn(job);
+        handles.push(handle);
     }
-    for task in tasks {
-        let result = task.join();
+    for handle in handles {
+        let result = handle.await;
         match result {
             Ok(result) => {
                 match result {
