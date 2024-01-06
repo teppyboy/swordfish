@@ -287,7 +287,7 @@ async fn info(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
-async fn dbg_parse_qingque_atopwl(ctx: &Context, msg: &Message) -> CommandResult {
+async fn dbg_get_message(command: &str, ctx: &Context, msg: &Message) -> Result<Message, ()> {
     let mut args = msg.content.split(" ");
     let target_channel_id = match args.nth(2) {
         Some(content) => match content.parse::<u64>() {
@@ -307,11 +307,11 @@ async fn dbg_parse_qingque_atopwl(ctx: &Context, msg: &Message) -> CommandResult
             helper::error_message(
                 ctx,
                 msg,
-                "Usage: `parse-qingque-atopwl <channel ID> <message ID>`".to_string(),
+                format!("Usage: `{} <channel ID> <message ID>`", command),
                 None,
             )
             .await;
-            return Ok(());
+            return Err(());
         }
     };
     let target_msg_id = match args.nth(0) {
@@ -325,18 +325,18 @@ async fn dbg_parse_qingque_atopwl(ctx: &Context, msg: &Message) -> CommandResult
                     None,
                 )
                 .await;
-                return Ok(());
+                return Err(());
             }
         },
         None => {
             helper::error_message(
                 ctx,
                 msg,
-                "Usage: `parse-qingque-atopwl <channel ID> <message ID>`".to_string(),
+                format!("Usage: `{} <channel ID> <message ID>`", command),
                 None,
             )
             .await;
-            return Ok(());
+            return Err(());
         }
     };
     let target_msg = match ctx
@@ -356,6 +356,16 @@ async fn dbg_parse_qingque_atopwl(ctx: &Context, msg: &Message) -> CommandResult
                 None,
             )
             .await;
+            return Err(());
+        }
+    };
+    target_msg
+}
+
+async fn dbg_parse_qingque_atopwl(ctx: &Context, msg: &Message) -> CommandResult {
+    let target_msg = match dbg_get_message("embed", ctx, msg).await {
+        Ok(msg) => msg,
+        Err(_) => {
             return Ok(());
         }
     };
@@ -395,74 +405,9 @@ async fn dbg_parse_qingque_atopwl(ctx: &Context, msg: &Message) -> CommandResult
 }
 
 async fn dbg_embed(ctx: &Context, msg: &Message) -> CommandResult {
-    let mut args = msg.content.split(" ");
-    let target_channel_id = match args.nth(2) {
-        Some(content) => match content.parse::<u64>() {
-            Ok(id) => id,
-            Err(why) => {
-                helper::error_message(
-                    ctx,
-                    msg,
-                    format!("Failed to parse channel ID: `{:?}`", why),
-                    None,
-                )
-                .await;
-                return Ok(());
-            }
-        },
-        None => {
-            helper::error_message(
-                ctx,
-                msg,
-                "Usage: `embed <channel ID> <message ID>`".to_string(),
-                None,
-            )
-            .await;
-            return Ok(());
-        }
-    };
-    let target_msg_id = match args.nth(0) {
-        Some(content) => match content.parse::<u64>() {
-            Ok(id) => id,
-            Err(why) => {
-                helper::error_message(
-                    ctx,
-                    msg,
-                    format!("Failed to parse message ID: `{:?}`", why),
-                    None,
-                )
-                .await;
-                return Ok(());
-            }
-        },
-        None => {
-            helper::error_message(
-                ctx,
-                msg,
-                "Usage: `embed <channel ID> <message ID>`".to_string(),
-                None,
-            )
-            .await;
-            return Ok(());
-        }
-    };
-    let target_msg = match ctx
-        .http()
-        .get_message(
-            ChannelId::new(target_channel_id),
-            MessageId::new(target_msg_id),
-        )
-        .await
-    {
+    let target_msg = match dbg_get_message("embed", ctx, msg).await {
         Ok(msg) => msg,
-        Err(why) => {
-            helper::error_message(
-                ctx,
-                msg,
-                format!("Failed to get message: `{:?}`", why),
-                None,
-            )
-            .await;
+        Err(_) => {
             return Ok(());
         }
     };
@@ -479,24 +424,11 @@ async fn dbg_embed(ctx: &Context, msg: &Message) -> CommandResult {
     let embed = &target_msg.embeds[0];
     let embed_title = match embed.title {
         Some(ref title) => title,
-        None => {
-            helper::error_message(ctx, msg, "Embed does not contain a title".to_string(), None)
-                .await;
-            return Ok(());
-        }
+        None => "None",
     };
     let embed_description = match embed.description {
         Some(ref description) => description,
-        None => {
-            helper::error_message(
-                ctx,
-                msg,
-                "Embed does not contain a description".to_string(),
-                None,
-            )
-            .await;
-            return Ok(());
-        }
+        None => "None",
     };
     helper::info_message(
         ctx,
@@ -519,74 +451,9 @@ async fn dbg_embed(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 async fn dbg_kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
-    let mut args = msg.content.split(" ");
-    let target_channel_id = match args.nth(2) {
-        Some(content) => match content.parse::<u64>() {
-            Ok(id) => id,
-            Err(why) => {
-                helper::error_message(
-                    ctx,
-                    msg,
-                    format!("Failed to parse channel ID: `{:?}`", why),
-                    None,
-                )
-                .await;
-                return Ok(());
-            }
-        },
-        None => {
-            helper::error_message(
-                ctx,
-                msg,
-                "Usage: `kdropanalyze <channel ID> <message ID>`".to_string(),
-                None,
-            )
-            .await;
-            return Ok(());
-        }
-    };
-    let target_msg_id = match args.nth(0) {
-        Some(content) => match content.parse::<u64>() {
-            Ok(id) => id,
-            Err(why) => {
-                helper::error_message(
-                    ctx,
-                    msg,
-                    format!("Failed to parse message ID: `{:?}`", why),
-                    None,
-                )
-                .await;
-                return Ok(());
-            }
-        },
-        None => {
-            helper::error_message(
-                ctx,
-                msg,
-                "Usage: `kdropanalyze <channel ID> <message ID>`".to_string(),
-                None,
-            )
-            .await;
-            return Ok(());
-        }
-    };
-    let target_msg = match ctx
-        .http()
-        .get_message(
-            ChannelId::new(target_channel_id),
-            MessageId::new(target_msg_id),
-        )
-        .await
-    {
+    let target_msg = match dbg_get_message("embed", ctx, msg).await {
         Ok(msg) => msg,
-        Err(why) => {
-            helper::error_message(
-                ctx,
-                msg,
-                format!("Failed to get message: `{:?}`", why),
-                None,
-            )
-            .await;
+        Err(_) => {
             return Ok(());
         }
     };
