@@ -13,7 +13,15 @@ use swordfish_common::{trace, warn};
 use tokio::task;
 
 static TEXT_NUM_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[A-Za-z0-9]").unwrap());
-static ALLOWED_CHARS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[!'-: ]").unwrap());
+static ALLOWED_CHARS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\-!': ]").unwrap());
+const CARD_NAME_X_OFFSET: u32 = 22;
+const CARD_NAME_Y_OFFSET: u32 = 28;
+const CARD_NAME_WIDTH: u32 = 202 - CARD_NAME_X_OFFSET;
+const CARD_NAME_HEIGHT: u32 = 70 - CARD_NAME_Y_OFFSET;
+const CARD_SERIES_X_OFFSET: u32 = 22;
+const CARD_SERIES_Y_OFFSET: u32 = 276;
+const CARD_SERIES_WIDTH: u32 = 204 - CARD_SERIES_X_OFFSET;
+const CARD_SERIES_HEIGHT: u32 = 330 - CARD_SERIES_Y_OFFSET;
 
 fn replace_string(text: &mut String, from: &str, to: &str) -> bool {
     match text.find(from) {
@@ -172,7 +180,12 @@ pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) ->
             libtesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
         // let binding = tesseract::get_tesseract_from_vec(false);
         // let mut leptess = binding.lock().unwrap();
-        let name_img = card_clone.crop_imm(22, 26, 204 - 22, 70 - 26);
+        let name_img = card_clone.crop_imm(
+            CARD_NAME_X_OFFSET,
+            CARD_NAME_Y_OFFSET,
+            CARD_NAME_WIDTH,
+            CARD_NAME_HEIGHT,
+        );
         let mut buffer: Cursor<Vec<u8>> = Cursor::new(Vec::new());
         match name_img.write_to(&mut buffer, ImageFormat::Png) {
             Ok(_) => {}
@@ -192,7 +205,12 @@ pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) ->
             libtesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
         // let binding = tesseract::get_tesseract_from_vec(false);
         // let mut leptess = binding.lock().unwrap();
-        let series_img = card_clone.crop_imm(22, 276, 204 - 22, 330 - 276);
+        let series_img = card_clone.crop_imm(
+            CARD_SERIES_X_OFFSET,
+            CARD_SERIES_Y_OFFSET,
+            CARD_SERIES_WIDTH,
+            CARD_SERIES_HEIGHT,
+        );
         let mut buffer: Cursor<Vec<u8>> = Cursor::new(Vec::new());
         match series_img.write_to(&mut buffer, ImageFormat::Png) {
             Ok(_) => {}
@@ -236,7 +254,12 @@ pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> C
     // Read the name and the series
     let card_clone = card.clone();
     let name_thread = task::spawn_blocking(move || {
-        let name_img = card_clone.crop_imm(22, 26, 204 - 22, 70 - 26);
+        let name_img = card_clone.crop_imm(
+            CARD_NAME_X_OFFSET,
+            CARD_NAME_Y_OFFSET,
+            CARD_NAME_WIDTH,
+            CARD_NAME_HEIGHT,
+        );
         let img = subprocess::Image::from_dynamic_image(&name_img).unwrap();
         save_image_if_trace(
             &name_img,
@@ -248,7 +271,12 @@ pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> C
     });
     let card_clone = card.clone();
     let series_thread = task::spawn_blocking(move || {
-        let series_img = card_clone.crop_imm(22, 276, 204 - 22, 330 - 276);
+        let series_img = card_clone.crop_imm(
+            CARD_SERIES_X_OFFSET,
+            CARD_SERIES_Y_OFFSET,
+            CARD_SERIES_WIDTH,
+            CARD_SERIES_HEIGHT,
+        );
         let img = subprocess::Image::from_dynamic_image(&series_img).unwrap();
         save_image_if_trace(
             &series_img,
