@@ -1,4 +1,5 @@
 #![feature(lazy_cell)]
+#![feature(string_remove_matches)]
 pub use log;
 pub use tracing::{debug, error, info, trace, warn};
 use tracing_subscriber::{self, fmt, EnvFilter};
@@ -6,6 +7,7 @@ pub mod constants;
 pub mod database;
 pub mod structs;
 pub mod tesseract;
+pub mod utils;
 
 pub fn setup_logger(level: &str) -> Result<(), ()> {
     let formatter = fmt::format()

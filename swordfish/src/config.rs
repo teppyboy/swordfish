@@ -18,9 +18,36 @@ pub struct Tesseract {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Debug {
+    pub allowed_users: Vec<u64>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct List {
+    pub enabled: bool,
+    pub servers: Vec<u64>,
+    pub channels: Vec<u64>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DropAnalyzer {
+    pub enabled: bool,
+    pub blacklist: List,
+    pub whitelist: List,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Features {
+    pub katana_drop_analysis: DropAnalyzer,
+    pub sofa_drop_analysis: DropAnalyzer,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub log: Log,
     pub tesseract: Tesseract,
+    pub debug: Debug,
+    pub features: Features,
 }
 
 impl Config {
@@ -35,6 +62,37 @@ impl Config {
             },
             tesseract: Tesseract {
                 backend: "libtesseract".to_string(),
+            },
+            debug: Debug {
+                allowed_users: vec![],
+            },
+            features: Features {
+                katana_drop_analysis: DropAnalyzer {
+                    enabled: false,
+                    blacklist: List {
+                        enabled: false,
+                        servers: vec![],
+                        channels: vec![],
+                    },
+                    whitelist: List {
+                        enabled: false,
+                        servers: vec![],
+                        channels: vec![],
+                    },
+                },
+                sofa_drop_analysis: DropAnalyzer {
+                    enabled: false,
+                    blacklist: List {
+                        enabled: false,
+                        servers: vec![],
+                        channels: vec![],
+                    },
+                    whitelist: List {
+                        enabled: false,
+                        servers: vec![],
+                        channels: vec![],
+                    },
+                },
             },
         }
     }

@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Card {
-    pub wishlist: Option<i32>,
+    pub wishlist: Option<u32>,
     pub name: String,
     pub series: String,
     pub print: i32,

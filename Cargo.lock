@@ -2191,6 +2191,7 @@ dependencies = [
  "mongodb",
  "rusty-tesseract",
  "serde",
+ "tokio",
  "tracing",
  "tracing-subscriber",
 ]
