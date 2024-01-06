@@ -1,5 +1,6 @@
 pub mod katana;
 
+use mongodb::bson::doc;
 use mongodb::options::ClientOptions;
 use mongodb::{Client, Database};
 use std::env;
@@ -9,11 +10,14 @@ use tracing::info;
 static MONGO_CLIENT: OnceLock<Client> = OnceLock::new();
 static MONGO_DATABASE: OnceLock<Database> = OnceLock::new();
 
-async fn init() {
+pub async fn init() {
     let mut options =
         ClientOptions::parse(env::var("MONGODB_URL").expect("MongoDB url must be provided"))
             .await
             .unwrap();
+    options.direct_connection = Some(true);
+    options.app_name = Some("swordfish".to_string());
+    options.default_database = Some("swordfish".to_string());
     match env::var("MONGODB_USERNAME") {
         Ok(username) => {
             options.credential = Some(
@@ -29,9 +33,12 @@ async fn init() {
             info!("No MongoDB username provided, using authentication provided in the url");
         }
     }
+    let client = Client::with_options(options).unwrap();
+    let db = client.database("swordfish");
+    db.run_command(doc! { "ping": 1 }, None).await.expect("Failed to connect to MongoDB");
+    MONGO_DATABASE.set(db).unwrap();
     MONGO_CLIENT
-        .set(Client::with_options(options).unwrap())
+        .set(client)
         .unwrap();
-    MONGO_DATABASE.set(MONGO_CLIENT.get().unwrap().database("swordfish"));
     katana::init();
 }

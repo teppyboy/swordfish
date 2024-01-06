@@ -86,8 +86,8 @@ async fn main() {
     setup_logger(&log_level).expect("Failed to setup logger");
     info!("Swordfish v{} - {}", env!("CARGO_PKG_VERSION"), GITHUB_URL);
     info!("Log level: {}", log_level);
-    info!("Loading database...");
-    warn!("Databases are not implemented yet");
+    info!("Initializing database...");
+    swordfish_common::database::init().await;
     info!("Initializing Discord client...");
     let framework = StandardFramework::new().group(&GENERAL_GROUP);
     framework.configure(Configuration::new().prefix("~")); // set the bot's prefix to "~"
@@ -193,10 +193,20 @@ async fn kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
             let mut reply_str = String::new();
             for card in cards {
                 // reply_str.push_str(&format!("{:?}\n", card));
+                let wishlist_str: String = match card.wishlist {
+                    Some(wishlist) => {
+                        let mut out_str = wishlist.to_string();
+                        while out_str.len() < 5 {
+                            out_str.push(' ');
+                        }
+                        out_str
+                    },
+                    None => "None ".to_string(),
+                };
                 reply_str.push_str(
                     format!(
-                        ":heart: `{:?}` • `{}` • **{}** • {}\n",
-                        card.wishlist, card.print, card.name, card.series
+                        ":heart: `{}` • `{}` • **{}** • {}\n",
+                        wishlist_str, card.print, card.name, card.series
                     )
                     .as_str(),
                 )

@@ -23,7 +23,13 @@ pub fn init() {
         .unwrap();
 }
 
-fn query_card() {
-    todo!("Query card from database");
-    println!("{:?}", card);
+pub async fn query_card(name: &str, series: &str) -> Option<Card> {
+    // todo!("Query card from database");
+    KATANA.get().unwrap().find_one(
+        mongodb::bson::doc! {
+            "name": name,
+            "series": series
+        },
+        None,
+    ).await.unwrap()
 }

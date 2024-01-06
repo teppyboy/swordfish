@@ -7,6 +7,7 @@ use serenity::model::channel::Message;
 use std::io::Cursor;
 use std::sync::LazyLock;
 use swordfish_common::structs::Card;
+use swordfish_common::database::katana as db;
 use swordfish_common::tesseract::{libtesseract, subprocess};
 use swordfish_common::{trace, warn};
 use tokio::task;
@@ -208,10 +209,17 @@ pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) ->
     trace!("Name: {}", name);
     let series = series_thread.await.unwrap();
     trace!("Series: {}", series);
+    let mut wishlist: Option<i32> = None;
     // TODO: Read the print number
-    // TODO: Read the wishlist number (from our database)
+    // Read the wishlist number
+    match db::query_card(name.as_str(), series.as_str()).await {
+        Some(card) => {
+            wishlist = card.wishlist;
+        }
+        None => {}
+    }
     return Card {
-        wishlist: None,
+        wishlist,
         name,
         series,
         print: 0,
@@ -249,10 +257,17 @@ pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> C
     trace!("Name: {}", name);
     let series = series_thread.await.unwrap();
     trace!("Series: {}", series);
+    let mut wishlist: Option<i32> = None;
     // TODO: Read the print number
-    // TODO: Read the wishlist number (from our database)
+    // Read the wishlist number
+    match db::query_card(name.as_str(), series.as_str()).await {
+        Some(card) => {
+            wishlist = card.wishlist;
+        }
+        None => {}
+    }
     return Card {
-        wishlist: None,
+        wishlist,
         name,
         series,
         print: 0,
