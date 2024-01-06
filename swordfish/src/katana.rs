@@ -130,6 +130,10 @@ fn fix_tesseract_string(text: &mut String) {
     while replace_string(text, "  ", " ") {
         trace!("Removing multiple spaces");
     }
+    // Remove the last character if it is a dash
+    if text.ends_with("-") {
+        text.pop();
+    }
     // Workaround if the first character is a space
     trace!("Text: {}", text);
     while text.starts_with(" ") {
