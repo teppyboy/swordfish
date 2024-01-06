@@ -6,4 +6,5 @@ pub struct Card {
     pub name: String,
     pub series: String,
     pub print: i32,
+    pub last_update_ts: i64,
 }

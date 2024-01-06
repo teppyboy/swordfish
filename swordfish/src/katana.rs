@@ -6,8 +6,8 @@ use regex::Regex;
 use serenity::model::channel::Message;
 use std::io::Cursor;
 use std::sync::LazyLock;
-use swordfish_common::structs::Card;
 use swordfish_common::database::katana as db;
+use swordfish_common::structs::Card;
 use swordfish_common::tesseract::{libtesseract, subprocess};
 use swordfish_common::{trace, warn};
 use tokio::task;
@@ -209,21 +209,22 @@ pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) ->
     trace!("Name: {}", name);
     let series = series_thread.await.unwrap();
     trace!("Series: {}", series);
-    let mut wishlist: Option<i32> = None;
     // TODO: Read the print number
-    // Read the wishlist number
-    match db::query_card(name.as_str(), series.as_str()).await {
-        Some(card) => {
-            wishlist = card.wishlist;
-        }
-        None => {}
-    }
-    return Card {
-        wishlist,
+    let mut card = Card {
+        wishlist: None,
         name,
         series,
         print: 0,
+        last_update_ts: 0,
     };
+    // Read the wishlist number
+    match db::query_card(&card.name.as_str(), &card.series.as_str()).await {
+        Some(c) => {
+            card = c;
+        }
+        None => {}
+    }
+    card
 }
 
 pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> Card {
@@ -257,21 +258,22 @@ pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> C
     trace!("Name: {}", name);
     let series = series_thread.await.unwrap();
     trace!("Series: {}", series);
-    let mut wishlist: Option<i32> = None;
     // TODO: Read the print number
-    // Read the wishlist number
-    match db::query_card(name.as_str(), series.as_str()).await {
-        Some(card) => {
-            wishlist = card.wishlist;
-        }
-        None => {}
-    }
-    return Card {
-        wishlist,
+    let mut card = Card {
+        wishlist: None,
         name,
         series,
         print: 0,
+        last_update_ts: 0,
     };
+    // Read the wishlist number
+    match db::query_card(&card.name.as_str(), &card.series.as_str()).await {
+        Some(c) => {
+            card = c;
+        }
+        None => {}
+    }
+    card
 }
 
 async fn execute_analyze_drop(image: DynamicImage, count: u32) -> Card {

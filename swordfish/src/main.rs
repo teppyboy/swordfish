@@ -200,13 +200,19 @@ async fn kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
                             out_str.push(' ');
                         }
                         out_str
-                    },
+                    }
                     None => "None ".to_string(),
+                };
+                let last_update_ts_str = match card.last_update_ts {
+                    0 => "`Never`".to_string(),
+                    ts => {
+                        format!("<t:{}:R>", ts.to_string())
+                    }
                 };
                 reply_str.push_str(
                     format!(
-                        ":heart: `{}` • `{}` • **{}** • {}\n",
-                        wishlist_str, card.print, card.name, card.series
+                        ":heart: `{}` • `{}` • **{}** • {} • {}\n",
+                        wishlist_str, card.print, card.name, card.series, last_update_ts_str
                     )
                     .as_str(),
                 )
