@@ -1,49 +1,44 @@
 pub use leptess::{LepTess, Variable};
-use std::{
-    sync::{Arc, LazyLock, Mutex},
-    thread,
-};
-
-static TESSERACT: LazyLock<Arc<Mutex<LepTess>>> = LazyLock::new(|| {
-    let mut lep_tess = match LepTess::new(None, "eng") {
-        Ok(lep_tess) => lep_tess,
-        Err(why) => panic!("{}", format!("Failed to initialize Tesseract: {:?}", why)),
-    };
-    // lep_tess.set_variable(Variable::TesseditPagesegMode, "6").unwrap();
-    // Use LSTM only.
-    lep_tess
-        .set_variable(Variable::TesseditOcrEngineMode, "2")
-        .unwrap();
-    Arc::new(Mutex::new(lep_tess))
-});
+use std::sync::{Arc, LazyLock, Mutex};
+use tokio::task;
 
 static mut TESSERACT_VEC: Vec<Arc<Mutex<LepTess>>> = Vec::new();
+static mut TESSERACT_NUMERIC_VEC: Vec<Arc<Mutex<LepTess>>> = Vec::new();
 
-///
-/// Get a Tesseract instance.
-///
-/// Deprecated because it provides no performance benefit, if you really need
-/// then use get_tesseract_from_vec.
-///
-pub fn get_tesseract(numeric_only: bool) -> Arc<Mutex<LepTess>> {
-    TESSERACT.clone()
-}
-
-pub unsafe fn get_tesseract_from_vec(numeric_only: bool) -> Arc<Mutex<LepTess>> {
+pub unsafe fn get_tesseract() -> Arc<Mutex<LepTess>> {
     let lep_tess: Arc<Mutex<LepTess>>;
     if TESSERACT_VEC.len() == 0 {
         for _ in 0..3 {
-            let num_only = numeric_only.clone();
-            thread::spawn(move || {
-                let ocr = init_tesseract(num_only).unwrap();
+            task::spawn(async move {
+                let ocr = init_tesseract(false).unwrap();
                 TESSERACT_VEC.push(Arc::new(Mutex::new(ocr)));
             });
         }
-        lep_tess = Arc::new(Mutex::new(init_tesseract(numeric_only).unwrap()));
+        lep_tess = Arc::new(Mutex::new(init_tesseract(false).unwrap()));
     } else {
         lep_tess = TESSERACT_VEC.pop().unwrap();
-        thread::spawn(move || unsafe {
-            let ocr = init_tesseract(numeric_only).unwrap();
+        task::spawn(async move {
+            let ocr = init_tesseract(false).unwrap();
+            TESSERACT_VEC.push(Arc::new(Mutex::new(ocr)));
+        });
+    }
+    lep_tess
+}
+
+pub unsafe fn get_tesseract_numeric() -> Arc<Mutex<LepTess>> {
+    let lep_tess: Arc<Mutex<LepTess>>;
+    if TESSERACT_NUMERIC_VEC.len() == 0 {
+        for _ in 0..3 {
+            task::spawn(async move {
+                let ocr = init_tesseract(false).unwrap();
+                TESSERACT_NUMERIC_VEC.push(Arc::new(Mutex::new(ocr)));
+            });
+        }
+        lep_tess = Arc::new(Mutex::new(init_tesseract(false).unwrap()));
+    } else {
+        lep_tess = TESSERACT_VEC.pop().unwrap();
+        task::spawn(async move {
+            let ocr = init_tesseract(false).unwrap();
             TESSERACT_VEC.push(Arc::new(Mutex::new(ocr)));
         });
     }
@@ -62,6 +57,8 @@ pub fn init_tesseract(numeric_only: bool) -> Result<LepTess, String> {
     lep_tess
         .set_variable(Variable::TesseditOcrEngineMode, "1")
         .unwrap();
+    // Set 70 as DPI
+    lep_tess.set_variable(Variable::UserDefinedDpi, "70").unwrap();
     if numeric_only {
         match lep_tess.set_variable(Variable::TesseditCharWhitelist, "0123456789") {
             Ok(_) => (),

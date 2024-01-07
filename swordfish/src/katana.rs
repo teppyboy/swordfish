@@ -13,7 +13,6 @@ use swordfish_common::{trace, warn};
 use tokio::task;
 
 static TEXT_NUM_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[A-Za-z0-9]").unwrap());
-static ALLOWED_CHARS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\-!.': ]").unwrap());
 const CARD_NAME_X_OFFSET: u32 = 22;
 const CARD_NAME_Y_OFFSET: u32 = 28;
 const CARD_NAME_WIDTH: u32 = 202 - CARD_NAME_X_OFFSET;
@@ -123,9 +122,7 @@ fn fix_tesseract_string(text: &mut String) {
     }
     // Remove all non-alphanumeric characters
     trace!("Text: {}", text);
-    text.retain(|c| {
-        TEXT_NUM_REGEX.is_match(&c.to_string()) || ALLOWED_CHARS_REGEX.is_match(&c.to_string())
-    });
+    text.retain(|c| TEXT_NUM_REGEX.is_match(&c.to_string()) || c.is_ascii_alphanumeric());
     // Fix "mn" -> "III"
     trace!("Text: {}", text);
     if text.ends_with("mn") {
