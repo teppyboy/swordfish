@@ -289,9 +289,9 @@ dependencies = [
 
 [[package]]
 name = "clang-sys"
-version = "1.6.1"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c688fc74432808e3eb684cae8830a86be1d66a2bd58e1f248ed0960a590baf6f"
+checksum = "67523a3b4be3ce1989d607a828d036249522dd9c1c8de7f4dd2dae43a37369d1"
 dependencies = [
  "glob",
  "libc",
@@ -309,6 +309,16 @@ name = "command_attr"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32f08c85a02e066b7b4f7dcb60eee6ae0793ef7d6452a3547d1f19665df070a9"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "command_attr"
+version = "0.5.1"
+source = "git+https://github.com/nshout/serenity-self#6b62ca61aa592d4fd22dc42848388c5fb3889161"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1141,12 +1151,12 @@ checksum = "302d7ab3130588088d277783b1e2d2e10c9e9e4a16dd9050e6ec93fb3e7048f4"
 
 [[package]]
 name = "libloading"
-version = "0.7.4"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b67380fd3b2fbe7527a606e18729d21c6f3951633d0500574c4dc22d2d638b9f"
+checksum = "c571b676ddfc9a8c12f1f3d3085a7b163966a8fd8098a90640953ce5f6170161"
 dependencies = [
  "cfg-if",
- "winapi",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -1974,7 +1984,42 @@ dependencies = [
  "bitflags 2.4.1",
  "bytes",
  "chrono",
- "command_attr",
+ "command_attr 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "dashmap",
+ "flate2",
+ "futures",
+ "fxhash",
+ "levenshtein",
+ "mime_guess",
+ "parking_lot",
+ "percent-encoding",
+ "reqwest",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "static_assertions",
+ "time",
+ "tokio",
+ "tokio-tungstenite",
+ "tracing",
+ "typemap_rev",
+ "typesize",
+ "url",
+ "uwl",
+]
+
+[[package]]
+name = "serenity"
+version = "0.13.0-alpha2"
+source = "git+https://github.com/nshout/serenity-self#6b62ca61aa592d4fd22dc42848388c5fb3889161"
+dependencies = [
+ "arrayvec",
+ "async-trait",
+ "base64 0.21.5",
+ "bitflags 2.4.1",
+ "bytes",
+ "chrono",
+ "command_attr 0.5.1 (git+https://github.com/nshout/serenity-self)",
  "dashmap",
  "flate2",
  "futures",
@@ -2174,9 +2219,11 @@ version = "0.1.0"
 dependencies = [
  "dotenvy",
  "image",
+ "leptess",
  "regex",
+ "rusty-tesseract",
  "serde",
- "serenity",
+ "serenity 0.12.0",
  "swordfish-common",
  "tokio",
  "toml",
@@ -2186,14 +2233,20 @@ dependencies = [
 name = "swordfish-common"
 version = "0.1.0"
 dependencies = [
- "leptess",
  "log",
  "mongodb",
- "rusty-tesseract",
  "serde",
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "swordfish-user"
+version = "0.1.0"
+dependencies = [
+ "serenity 0.13.0-alpha2",
+ "swordfish-common",
 ]
 
 [[package]]

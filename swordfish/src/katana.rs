@@ -1,3 +1,4 @@
+use crate::tesseract::{libtesseract, subprocess};
 use crate::CONFIG;
 use image::imageops::colorops::contrast_in_place;
 use image::io::Reader as ImageReader;
@@ -8,7 +9,6 @@ use std::io::Cursor;
 use std::sync::LazyLock;
 use swordfish_common::database::katana as db;
 use swordfish_common::structs::Card;
-use swordfish_common::tesseract::{libtesseract, subprocess};
 use swordfish_common::{trace, warn};
 use tokio::task;
 

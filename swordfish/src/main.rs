@@ -19,6 +19,7 @@ mod debug;
 mod helper;
 mod katana;
 mod template;
+mod tesseract;
 
 const GITHUB_URL: &str = "https://github.com/teppyboy/swordfish";
 static CONFIG: OnceLock<Config> = OnceLock::new();
@@ -95,10 +96,10 @@ async fn parse_qingque_event(ctx: &Context, event: MessageUpdateEvent) -> Result
             let cards = utils::katana::parse_cards_from_qingque_atopwl(
                 &embed.description.as_ref().unwrap(),
             );
-            trace!("Begin importing cards");
+            debug!("Importing cards from Qingque 'Top Wishlist'");
             match database::katana::write_cards(cards).await {
                 Ok(_) => {
-                    trace!("Imported successully");
+                    debug!("Imported successully");
                 }
                 Err(why) => {
                     error!("Failed to import card: {:?}", why);
@@ -206,10 +207,10 @@ async fn parse_katana_embed(embed: &Embed) {
                 if cards.len() == 0 {
                     return;
                 }
-                trace!("Begin importing cards");
+                debug!("Importing cards from Katana 'Card Collection'");
                 match database::katana::write_cards(cards).await {
                     Ok(_) => {
-                        trace!("Imported successully");
+                        debug!("Imported successully");
                     }
                     Err(why) => {
                         error!("Failed to import card: {:?}", why);
@@ -231,10 +232,10 @@ async fn parse_katana_embed(embed: &Embed) {
                         return;
                     }
                 };
-                trace!("Begin importing a card");
+                debug!("Importing a card from Katana 'Character Lookup'");
                 match database::katana::write_card(card).await {
                     Ok(_) => {
-                        trace!("Imported successully");
+                        debug!("Imported successully");
                     }
                     Err(why) => {
                         error!("Failed to import card: {:?}", why);
@@ -253,10 +254,10 @@ async fn parse_katana_embed(embed: &Embed) {
                 if cards.len() == 0 {
                     return;
                 }
-                trace!("Begin importing cards");
+                debug!("Importing cards from Katana 'Character Results'");
                 match database::katana::write_cards(cards).await {
                     Ok(_) => {
-                        trace!("Imported successully");
+                        debug!("Imported successully");
                     }
                     Err(why) => {
                         error!("Failed to import card: {:?}", why);

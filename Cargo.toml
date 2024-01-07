@@ -3,5 +3,5 @@ resolver = "1"
 members = [
     "swordfish-common",
     "swordfish"
-]
+, "swordfish-user"]
 default-members = ["swordfish"]
