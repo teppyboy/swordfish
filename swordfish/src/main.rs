@@ -203,7 +203,7 @@ async fn main() {
     swordfish_common::database::init().await;
     info!("Initializing Discord client...");
     let framework = StandardFramework::new().group(&GENERAL_GROUP);
-    framework.configure(Configuration::new().prefix("~")); // set the bot's prefix to "~"
+    framework.configure(Configuration::new().prefix(CONFIG.get().unwrap().general.prefix.clone()));
 
     // Login with a bot token from the environment
     let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
@@ -229,7 +229,7 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 async fn debug(ctx: &Context, msg: &Message) -> CommandResult {
     let config = CONFIG.get().unwrap();
-    if ["debug", "trace"].contains(&config.log.level.as_str()){
+    if !["debug", "trace"].contains(&config.log.level.as_str()){
         return Ok(());
     }
     if !config.debug.allowed_users.contains(&msg.author.id.get()) {
@@ -255,6 +255,7 @@ async fn debug(ctx: &Context, msg: &Message) -> CommandResult {
         "kda" => debug::dbg_kdropanalyze(ctx, msg).await?,
         "embed" => debug::dbg_embed(ctx, msg).await?,
         "parse-qingque-atopwl" => debug::dbg_parse_qingque_atopwl(ctx, msg).await?,
+        "parse-katana-kc_ow" => debug::dbg_parse_katana_kc_ow(ctx, msg).await?,
         _ => {
             helper::error_message(
                 ctx,

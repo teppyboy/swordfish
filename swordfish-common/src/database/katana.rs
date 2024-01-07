@@ -26,7 +26,6 @@ pub fn init() {
 }
 
 pub async fn query_card(name: &str, series: &str) -> Option<Card> {
-    // todo!("Query card from database");
     KATANA
         .get()
         .unwrap()

@@ -127,6 +127,48 @@ pub async fn dbg_parse_qingque_atopwl(ctx: &Context, msg: &Message) -> CommandRe
     Ok(())
 }
 
+pub async fn dbg_parse_katana_kc_ow(ctx: &Context, msg: &Message) -> CommandResult {
+    let target_msg = match dbg_get_message("embed", ctx, msg).await {
+        Ok(msg) => msg,
+        Err(_) => {
+            return Ok(());
+        }
+    };
+    if target_msg.embeds.len() == 0 {
+        helper::error_message(
+            ctx,
+            msg,
+            "Message does not contain any embeds".to_string(),
+            None,
+        )
+        .await;
+        return Ok(());
+    }
+    let embed = &target_msg.embeds[0];
+    let embed_description = match embed.description {
+        Some(ref description) => description,
+        None => {
+            helper::error_message(
+                ctx,
+                msg,
+                "Embed does not contain a description".to_string(),
+                None,
+            )
+            .await;
+            return Ok(());
+        }
+    };
+    let cards = utils::katana::parse_cards_from_katana_kc_ow(embed_description);
+    helper::info_message(
+        ctx,
+        msg,
+        format!("Parsed cards: ```\n{:?}\n```", cards),
+        None,
+    )
+    .await;
+    Ok(())
+}
+
 pub async fn dbg_embed(ctx: &Context, msg: &Message) -> CommandResult {
     let target_msg = match dbg_get_message("embed", ctx, msg).await {
         Ok(msg) => msg,
@@ -158,7 +200,7 @@ pub async fn dbg_embed(ctx: &Context, msg: &Message) -> CommandResult {
         msg,
         format!(
             "Title: \n\
-    ```\
+    ```\n\
     {}\n\
     ```\n\
     Description: \n\

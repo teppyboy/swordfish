@@ -43,11 +43,17 @@ pub struct Features {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct General {
+    pub prefix: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub log: Log,
     pub tesseract: Tesseract,
     pub debug: Debug,
     pub features: Features,
+    pub general: General,
 }
 
 impl Config {
@@ -93,6 +99,9 @@ impl Config {
                         channels: vec![],
                     },
                 },
+            },
+            general: General {
+                prefix: "~".to_string(),
             },
         }
     }
