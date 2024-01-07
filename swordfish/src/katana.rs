@@ -139,6 +139,13 @@ fn fix_tesseract_string(text: &mut String) {
     // Fix "lll" -> "!!!"
     trace!("Text: {}", text);
     replace_string(text, "lll", "!!!");
+    // Fix "Il" -> "II" in the end of the string
+    trace!("Text: {}", text);
+    if text.ends_with("Il") {
+        text.pop();
+        text.pop();
+        text.push_str("II");
+    }
     // Replace multiple spaces with one space
     trace!("Text: {}", text);
     while replace_string(text, "  ", " ") {
