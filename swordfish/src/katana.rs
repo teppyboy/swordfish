@@ -178,11 +178,11 @@ pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) ->
     trace!("Spawning threads for analyzing card...");
     // Read the name and the series
     let card_clone = card.clone();
-    let name_thread = task::spawn_blocking(move || {
-        let mut leptess =
-            libtesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
-        // let binding = tesseract::get_tesseract_from_vec(false);
-        // let mut leptess = binding.lock().unwrap();
+    let name_thread = task::spawn_blocking(move || unsafe {
+        // let mut leptess =
+        //     libtesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
+        let binding = libtesseract::get_tesseract();
+        let mut leptess = binding.lock().unwrap();
         let name_img = card_clone.crop_imm(
             CARD_NAME_X_OFFSET,
             CARD_NAME_Y_OFFSET,
@@ -203,11 +203,11 @@ pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) ->
         name_str
     });
     let card_clone = card.clone();
-    let series_thread = task::spawn_blocking(move || {
-        let mut leptess =
-            libtesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
-        // let binding = tesseract::get_tesseract_from_vec(false);
-        // let mut leptess = binding.lock().unwrap();
+    let series_thread = task::spawn_blocking(move || unsafe {
+        // let mut leptess =
+        //     libtesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
+        let binding = libtesseract::get_tesseract();
+        let mut leptess = binding.lock().unwrap();
         let series_img = card_clone.crop_imm(
             CARD_SERIES_X_OFFSET,
             CARD_SERIES_Y_OFFSET,
