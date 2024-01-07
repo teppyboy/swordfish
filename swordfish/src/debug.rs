@@ -1,7 +1,7 @@
-use crate::CONFIG;
 use crate::helper;
 use crate::katana;
 use crate::utils;
+use crate::CONFIG;
 use serenity::framework::standard::CommandResult;
 use serenity::model::{
     channel::Message,
@@ -169,6 +169,91 @@ pub async fn dbg_parse_katana_kc_ow(ctx: &Context, msg: &Message) -> CommandResu
     Ok(())
 }
 
+pub async fn dbg_parse_katana_klu_results(ctx: &Context, msg: &Message) -> CommandResult {
+    let target_msg = match dbg_get_message("embed", ctx, msg).await {
+        Ok(msg) => msg,
+        Err(_) => {
+            return Ok(());
+        }
+    };
+    if target_msg.embeds.len() == 0 {
+        helper::error_message(
+            ctx,
+            msg,
+            "Message does not contain any embeds".to_string(),
+            None,
+        )
+        .await;
+        return Ok(());
+    }
+    let embed = &target_msg.embeds[0];
+    let fields = match embed.fields.len() {
+        0 => {
+            helper::error_message(
+                ctx,
+                msg,
+                "Embed does not contain any fields".to_string(),
+                None,
+            )
+            .await;
+            return Ok(());
+        }
+        _ => &embed.fields,
+    };
+    let embed_field = fields.get(0).unwrap();
+    let cards = utils::katana::parse_cards_from_katana_klu_results(&embed_field.value);
+    helper::info_message(
+        ctx,
+        msg,
+        format!("Parsed cards: ```\n{:?}\n```", cards),
+        None,
+    )
+    .await;
+    Ok(())
+}
+
+pub async fn dbg_parse_katana_klu_lookup(ctx: &Context, msg: &Message) -> CommandResult {
+    let target_msg = match dbg_get_message("embed", ctx, msg).await {
+        Ok(msg) => msg,
+        Err(_) => {
+            return Ok(());
+        }
+    };
+    if target_msg.embeds.len() == 0 {
+        helper::error_message(
+            ctx,
+            msg,
+            "Message does not contain any embeds".to_string(),
+            None,
+        )
+        .await;
+        return Ok(());
+    }
+    let embed = &target_msg.embeds[0];
+    let embed_description = match embed.description {
+        Some(ref description) => description,
+        None => {
+            helper::error_message(
+                ctx,
+                msg,
+                "Embed does not contain a description".to_string(),
+                None,
+            )
+            .await;
+            return Ok(());
+        }
+    };
+    let card = match utils::katana::parse_cards_from_katana_klu_lookup(embed_description) {
+        Some(card) => card,
+        None => {
+            helper::error_message(ctx, msg, "Failed to parse card".to_string(), None).await;
+            return Ok(());
+        }
+    };
+    helper::info_message(ctx, msg, format!("Parsed card: ```\n{:?}\n```", card), None).await;
+    Ok(())
+}
+
 pub async fn dbg_embed(ctx: &Context, msg: &Message) -> CommandResult {
     let target_msg = match dbg_get_message("embed", ctx, msg).await {
         Ok(msg) => msg,
@@ -195,6 +280,23 @@ pub async fn dbg_embed(ctx: &Context, msg: &Message) -> CommandResult {
         Some(ref description) => description,
         None => "None",
     };
+    let embed_footer_text = match embed.footer {
+        Some(ref footer) => footer.text.as_str(),
+        None => "None",
+    };
+    let fields_text = match embed.fields.len() {
+        0 => "```\nNone\n```".to_string(),
+        _ => {
+            let mut fields_text = String::new();
+            for field in &embed.fields {
+                fields_text.push_str(&format!(
+                    "Name: `{}`\nValue: ```\n{}\n```\nInline: `{}`\n",
+                    field.name, field.value, field.inline
+                ));
+            }
+            fields_text
+        }
+    };
     helper::info_message(
         ctx,
         msg,
@@ -206,8 +308,14 @@ pub async fn dbg_embed(ctx: &Context, msg: &Message) -> CommandResult {
     Description: \n\
     ```\n\
     {}\n\
+    ```\n\
+    Fields: \n\
+    {}\n\
+    Footer Text: \n\
+    ```\n\
+    {}\n\
     ```",
-            embed_title, embed_description
+            embed_title, embed_description, fields_text, embed_footer_text
         ),
         Some("Embed information".to_string()),
     )

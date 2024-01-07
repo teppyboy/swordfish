@@ -1,6 +1,6 @@
 #![feature(lazy_cell)]
 use dotenvy::dotenv;
-use serenity::all::MessageUpdateEvent;
+use serenity::all::{Embed, MessageUpdateEvent};
 use serenity::async_trait;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{CommandResult, Configuration, StandardFramework};
@@ -67,13 +67,19 @@ impl EventHandler for Handler {
             }
         };
         trace!("Message update: {}, sender: {}", content, author.id);
-        if author.id.get() == constants::QINGQUE_ID {
-            parse_qingque(&ctx, event).await.unwrap();
+        match author.id.get() {
+            constants::KATANA_ID => {
+                parse_katana_event(&ctx, event).await.unwrap();
+            }
+            constants::QINGQUE_ID => {
+                parse_qingque_event(&ctx, event).await.unwrap();
+            }
+            _ => {}
         }
     }
 }
 
-async fn parse_qingque(ctx: &Context, event: MessageUpdateEvent) -> Result<(), String> {
+async fn parse_qingque_event(ctx: &Context, event: MessageUpdateEvent) -> Result<(), String> {
     if event.embeds.is_none() || event.embeds.clone().unwrap().len() == 0 {
         return Ok(());
     }
@@ -103,6 +109,15 @@ async fn parse_qingque(ctx: &Context, event: MessageUpdateEvent) -> Result<(), S
             return Ok(());
         }
     }
+    Ok(())
+}
+
+async fn parse_katana_event(ctx: &Context, event: MessageUpdateEvent) -> Result<(), String> {
+    if event.embeds.is_none() || event.embeds.clone().unwrap().len() == 0 {
+        return Ok(());
+    }
+    let embed = &event.embeds.unwrap()[0];
+    parse_katana_embed(embed).await;
     Ok(())
 }
 
@@ -171,8 +186,87 @@ async fn parse_katana(ctx: &Context, msg: &Message) -> Result<(), String> {
                 .await;
             }
         };
+    } else {
+        if msg.embeds.len() == 0 {
+            return Ok(());
+        }
+        let embed = &msg.embeds[0];
+        parse_katana_embed(embed).await;
     }
     Ok(())
+}
+
+async fn parse_katana_embed(embed: &Embed) {
+    match embed.author {
+        Some(ref author) => match author.name.as_str() {
+            "Card Collection" => {
+                let cards = utils::katana::parse_cards_from_katana_kc_ow(
+                    &embed.description.as_ref().unwrap(),
+                );
+                if cards.len() == 0 {
+                    return;
+                }
+                trace!("Begin importing cards");
+                match database::katana::write_cards(cards).await {
+                    Ok(_) => {
+                        trace!("Imported successully");
+                    }
+                    Err(why) => {
+                        error!("Failed to import card: {:?}", why);
+                    }
+                }
+            }
+            _ => {}
+        },
+        None => {}
+    };
+    match embed.title {
+        Some(ref title) => match title.as_str() {
+            "Character Lookup" => {
+                let card = match utils::katana::parse_cards_from_katana_klu_lookup(
+                    &embed.description.as_ref().unwrap(),
+                ) {
+                    Some(card) => card,
+                    None => {
+                        return;
+                    }
+                };
+                trace!("Begin importing a card");
+                match database::katana::write_card(card).await {
+                    Ok(_) => {
+                        trace!("Imported successully");
+                    }
+                    Err(why) => {
+                        error!("Failed to import card: {:?}", why);
+                    }
+                }
+            }
+            "Character Results" => {
+                let fields = match embed.fields.len() {
+                    0 => {
+                        return;
+                    }
+                    _ => &embed.fields,
+                };
+                let embed_field = fields.get(0).unwrap();
+                let cards = utils::katana::parse_cards_from_katana_klu_results(&embed_field.value);
+                if cards.len() == 0 {
+                    return;
+                }
+                trace!("Begin importing cards");
+                match database::katana::write_cards(cards).await {
+                    Ok(_) => {
+                        trace!("Imported successully");
+                    }
+                    Err(why) => {
+                        error!("Failed to import card: {:?}", why);
+                    }
+                }
+            }
+            _ => {}
+        },
+        None => {}
+    };
 }
 
 #[tokio::main]
@@ -229,7 +323,7 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 async fn debug(ctx: &Context, msg: &Message) -> CommandResult {
     let config = CONFIG.get().unwrap();
-    if !["debug", "trace"].contains(&config.log.level.as_str()){
+    if !["debug", "trace"].contains(&config.log.level.as_str()) {
         return Ok(());
     }
     if !config.debug.allowed_users.contains(&msg.author.id.get()) {
@@ -256,6 +350,8 @@ async fn debug(ctx: &Context, msg: &Message) -> CommandResult {
         "embed" => debug::dbg_embed(ctx, msg).await?,
         "parse-qingque-atopwl" => debug::dbg_parse_qingque_atopwl(ctx, msg).await?,
         "parse-katana-kc_ow" => debug::dbg_parse_katana_kc_ow(ctx, msg).await?,
+        "parse-katana-klu_lookup" => debug::dbg_parse_katana_klu_lookup(ctx, msg).await?,
+        "parse-katana-klu_results" => debug::dbg_parse_katana_klu_results(ctx, msg).await?,
         _ => {
             helper::error_message(
                 ctx,
