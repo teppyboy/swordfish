@@ -57,6 +57,10 @@ fn fix_tesseract_string(text: &mut String) {
         text.remove(0);
         text.remove(0);
     }
+    // Remove the first character if it is not alphanumeric
+    if !TEXT_NUM_REGEX.is_match(text.clone().chars().nth(0).unwrap().to_string().as_str()) {
+        text.remove(0);
+    }
     // Workaround IR -> Ik
     // Maybe it only occurs if Ik is in the start of the string?
     // e.g. "IReda" -> "Ikeda"
