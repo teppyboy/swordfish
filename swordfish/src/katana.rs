@@ -118,7 +118,9 @@ fn fix_tesseract_string(text: &mut String) {
     }
     // Replace "\n" with " "
     trace!("Text: {}", text);
-    replace_string(text, "\n", " ");
+    while replace_string(text, "\n", " ") {
+        trace!("Replacing '\\n' with ' '");
+    }
     // Remove all non-alphanumeric characters
     trace!("Text: {}", text);
     text.retain(|c| {
