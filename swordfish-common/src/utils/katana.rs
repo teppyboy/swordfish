@@ -211,15 +211,31 @@ pub fn parse_cards_from_katana_klu_lookup(content: &String) -> Option<Card> {
         None => return None,
     };
     // Wishlist
-    let mut line_split = lines.nth(1).unwrap().split(" · ");
-    let wishlist = match line_split.nth(1) {
-        Some(series) => {
-            let mut series_string = series.to_string();
-            series_string.remove_matches("**");
-            match series_string.parse::<u32>() {
+    let mut line_split: Option<std::str::Split<'_, &str>> = None;
+    while line_split.is_none() {
+        line_split = match lines.next() {
+            Some(line) => {
+                if line.contains("Wishlisted") {
+                    Some(line.split(" · "))
+                } else {
+                    None
+                }
+            }
+            None => {
+                error!("Failed to parse wishlist number: {}", content);
+                return None;
+            },
+        }
+    }
+    let wishlist = match line_split?.nth(1) {
+        Some(wl) => {
+            let mut wl_string = wl.to_string();
+            wl_string.remove_matches("**");
+            wl_string.remove_matches(",");
+            match wl_string.parse::<u32>() {
                 Ok(wishlist) => wishlist,
                 Err(_) => {
-                    error!("Failed to parse wishlist number: {}", series_string);
+                    error!("Failed to parse wishlist number: {}", wl_string);
                     return None;
                 }
             }
