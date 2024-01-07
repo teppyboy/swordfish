@@ -2245,6 +2245,7 @@ dependencies = [
 name = "swordfish-user"
 version = "0.1.0"
 dependencies = [
+ "dotenvy",
  "serenity 0.13.0-alpha2",
  "swordfish-common",
 ]

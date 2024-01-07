@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+dotenvy = "0.15.7"
 serenity = { git = "https://github.com/nshout/serenity-self", version = "0.13.0-alpha2" }
 
 

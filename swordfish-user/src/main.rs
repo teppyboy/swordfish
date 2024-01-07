@@ -1,9 +1,9 @@
-use std::env;
-
+use dotenvy::dotenv;
 use serenity::all::{Embed, MessageUpdateEvent};
 use serenity::async_trait;
 use serenity::model::channel::Message;
 use serenity::prelude::*;
+use std::env;
 use swordfish_common::setup_logger;
 use swordfish_common::{constants, database, utils};
 use swordfish_common::{debug, tokio};
@@ -181,6 +181,12 @@ impl EventHandler for Handler {
 
 #[tokio::main]
 async fn main() {
+    match dotenv() {
+        Ok(_) => {}
+        Err(why) => {
+            eprintln!("Failed to load .env: {:?}", why);
+        }
+    }
     // Login with a user token from the environment
     let log_level = env::var("LOG_LEVEL").unwrap_or("info".to_string());
     setup_logger(log_level.as_str()).expect("Failed to setup logger");
