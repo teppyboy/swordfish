@@ -10,9 +10,9 @@ use std::env;
 use std::path::Path;
 use std::sync::OnceLock;
 use swordfish_common::*;
-use tokio::time::Instant;
 
 use crate::config::Config;
+use crate::tesseract::libtesseract;
 
 mod config;
 mod debug;
@@ -138,55 +138,7 @@ async fn parse_katana(ctx: &Context, msg: &Message) -> Result<(), String> {
         if !helper::message_in_whitelist(msg, &config.features.katana_drop_analysis.whitelist) {
             return Ok(());
         }
-        let start = Instant::now();
-        match katana::analyze_drop_message(msg).await {
-            Ok(cards) => {
-                let duration = start.elapsed();
-                let mut reply_str = String::new();
-                for card in cards {
-                    // reply_str.push_str(&format!("{:?}\n", card));
-                    let wishlist_str: String = match card.wishlist {
-                        Some(wishlist) => {
-                            let mut out_str = wishlist.to_string();
-                            while out_str.len() < 5 {
-                                out_str.push(' ');
-                            }
-                            out_str
-                        }
-                        None => "None ".to_string(),
-                    };
-                    let last_update_ts_str = match card.last_update_ts {
-                        0 => "`Never`".to_string(),
-                        ts => {
-                            format!("<t:{}:R>", ts.to_string())
-                        }
-                    };
-                    reply_str.push_str(
-                        format!(
-                            ":heart: `{}` • `{}` • **{}** • {} • {}\n",
-                            wishlist_str, card.print, card.name, card.series, last_update_ts_str
-                        )
-                        .as_str(),
-                    )
-                }
-                reply_str.push_str(&format!("Time taken (to analyze): `{:?}`", duration));
-                match msg.reply(ctx, reply_str).await {
-                    Ok(_) => {}
-                    Err(why) => {
-                        error!("Failed to reply to message: {:?}", why);
-                    }
-                };
-            }
-            Err(why) => {
-                helper::error_message(
-                    ctx,
-                    msg,
-                    format!("Failed to analyze drop: `{:?}`", why),
-                    None,
-                )
-                .await;
-            }
-        };
+        katana::handle_drop_message(ctx, msg).await;
     } else {
         if msg.embeds.len() == 0 {
             return Ok(());
@@ -270,7 +222,7 @@ async fn parse_katana_embed(embed: &Embed) {
     };
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 32)]
 async fn main() {
     match dotenv() {
         Ok(_) => {}
@@ -294,11 +246,22 @@ async fn main() {
     setup_logger(&log_level).expect("Failed to setup logger");
     info!("Swordfish v{} - {}", env!("CARGO_PKG_VERSION"), GITHUB_URL);
     info!("Log level: {}", log_level);
+    let config = CONFIG.get().unwrap();
+    if config.log.file.enabled {
+        info!("Logging to file: {}", CONFIG.get().unwrap().log.file.path);
+    }
+    if config.tesseract.backend == "libtesseract" {
+        info!("Using libtesseract as Tesseract backend");
+        info!("Initializing libtesseract...");
+        libtesseract::init().await;
+    } else {
+        info!("Using subprocess as Tesseract backend");
+    }
     info!("Initializing database...");
     swordfish_common::database::init().await;
     info!("Initializing Discord client...");
     let framework = StandardFramework::new().group(&GENERAL_GROUP);
-    framework.configure(Configuration::new().prefix(CONFIG.get().unwrap().general.prefix.clone()));
+    framework.configure(Configuration::new().prefix(config.general.prefix.clone()));
 
     // Login with a bot token from the environment
     let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;

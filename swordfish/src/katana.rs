@@ -1,18 +1,21 @@
+use crate::helper;
 use crate::tesseract::{libtesseract, subprocess};
 use crate::CONFIG;
 use image::imageops::colorops::contrast_in_place;
 use image::io::Reader as ImageReader;
 use image::{DynamicImage, ImageFormat};
 use regex::Regex;
+use serenity::all::Context;
 use serenity::model::channel::Message;
 use std::io::Cursor;
 use std::sync::LazyLock;
 use swordfish_common::database::katana as db;
 use swordfish_common::structs::Card;
-use swordfish_common::{trace, warn};
+use swordfish_common::{error, trace, warn};
 use tokio::task;
+use tokio::time::Instant;
 
-static TEXT_NUM_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[A-Za-z0-9]").unwrap());
+static ALLOWED_CHARS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\-!.': ]").unwrap());
 const CARD_NAME_X_OFFSET: u32 = 22;
 const CARD_NAME_Y_OFFSET: u32 = 28;
 const CARD_NAME_WIDTH: u32 = 202 - CARD_NAME_X_OFFSET;
@@ -57,7 +60,7 @@ fn fix_tesseract_string(text: &mut String) {
         text.remove(0);
     }
     // Remove the first character if it is not alphanumeric
-    if !TEXT_NUM_REGEX.is_match(text.clone().chars().nth(0).unwrap().to_string().as_str()) {
+    if !text.clone().chars().nth(0).unwrap().is_ascii_alphanumeric() {
         text.remove(0);
     }
     // Workaround IR -> Ik
@@ -122,7 +125,7 @@ fn fix_tesseract_string(text: &mut String) {
     }
     // Remove all non-alphanumeric characters
     trace!("Text: {}", text);
-    text.retain(|c| TEXT_NUM_REGEX.is_match(&c.to_string()) || c.is_ascii_alphanumeric());
+    text.retain(|c| ALLOWED_CHARS_REGEX.is_match(&c.to_string()) || c.is_ascii_alphanumeric());
     // Fix "mn" -> "III"
     trace!("Text: {}", text);
     if text.ends_with("mn") {
@@ -385,4 +388,56 @@ pub async fn analyze_drop_message(message: &Message) -> Result<Vec<Card>, String
         };
     }
     Ok(cards)
+}
+
+pub async fn handle_drop_message(ctx: &Context, msg: &Message) {
+    let start = Instant::now();
+    match analyze_drop_message(msg).await {
+        Ok(cards) => {
+            let duration = start.elapsed();
+            let mut reply_str = String::new();
+            for card in cards {
+                // reply_str.push_str(&format!("{:?}\n", card));
+                let wishlist_str: String = match card.wishlist {
+                    Some(wishlist) => {
+                        let mut out_str = wishlist.to_string();
+                        while out_str.len() < 5 {
+                            out_str.push(' ');
+                        }
+                        out_str
+                    }
+                    None => "None ".to_string(),
+                };
+                let last_update_ts_str = match card.last_update_ts {
+                    0 => "`Never`".to_string(),
+                    ts => {
+                        format!("<t:{}:R>", ts.to_string())
+                    }
+                };
+                reply_str.push_str(
+                    format!(
+                        ":heart: `{}` • `{}` • **{}** • {} • {}\n",
+                        wishlist_str, card.print, card.name, card.series, last_update_ts_str
+                    )
+                    .as_str(),
+                )
+            }
+            reply_str.push_str(&format!("Time taken (to analyze): `{:?}`", duration));
+            match msg.reply(ctx, reply_str).await {
+                Ok(_) => {}
+                Err(why) => {
+                    error!("Failed to reply to message: {:?}", why);
+                }
+            };
+        }
+        Err(why) => {
+            helper::error_message(
+                ctx,
+                msg,
+                format!("Failed to analyze drop: `{:?}`", why),
+                None,
+            )
+            .await;
+        }
+    };
 }

@@ -224,7 +224,7 @@ pub fn parse_cards_from_katana_klu_lookup(content: &String) -> Option<Card> {
             None => {
                 error!("Failed to parse wishlist number: {}", content);
                 return None;
-            },
+            }
         }
     }
     let wishlist = match line_split?.nth(1) {
