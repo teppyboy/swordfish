@@ -1,5 +1,5 @@
 pub use leptess::{LepTess, Variable};
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{Arc, Mutex};
 use tokio::task;
 
 static mut TESSERACT_VEC: Vec<Arc<Mutex<LepTess>>> = Vec::new();
@@ -36,10 +36,10 @@ pub unsafe fn get_tesseract_numeric() -> Arc<Mutex<LepTess>> {
         }
         lep_tess = Arc::new(Mutex::new(init_tesseract(false).unwrap()));
     } else {
-        lep_tess = TESSERACT_VEC.pop().unwrap();
+        lep_tess = TESSERACT_NUMERIC_VEC.pop().unwrap();
         task::spawn(async move {
             let ocr = init_tesseract(false).unwrap();
-            TESSERACT_VEC.push(Arc::new(Mutex::new(ocr)));
+            TESSERACT_NUMERIC_VEC.push(Arc::new(Mutex::new(ocr)));
         });
     }
     lep_tess
