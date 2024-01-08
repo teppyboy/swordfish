@@ -38,12 +38,6 @@ impl EventHandler for Handler {
         if msg.author.id.get() == constants::KATANA_ID {
             parse_katana(&ctx, &msg).await.unwrap();
         }
-        if msg.content == "pong" {
-            info!("Message contains 'pong'");
-            if let Err(why) = msg.channel_id.say(&ctx.http, "Pongo!").await {
-                println!("Error sending message: {:?}", why);
-            }
-        }
     }
     async fn message_update(
         &self,
