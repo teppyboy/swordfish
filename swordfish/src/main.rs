@@ -123,7 +123,7 @@ async fn parse_katana_event(ctx: &Context, event: MessageUpdateEvent) -> Result<
 }
 
 async fn parse_katana(ctx: &Context, msg: &Message) -> Result<(), String> {
-    if msg.content.contains("is dropping 3 cards!")
+    if (msg.content.contains("is dropping") && msg.content.contains("cards!"))
         || msg
             .content
             .contains("I'm dropping 3 cards since this server is currently active!")

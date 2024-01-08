@@ -257,14 +257,12 @@ pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) ->
         Some(c) => {
             card = c;
         }
-        None => {
-            match db::query_card_regex(&card.name, &card.series).await {
-                Some(c) => {
-                    card = c;
-                }
-                None => {}
+        None => match db::query_card_regex(&card.name, &card.series).await {
+            Some(c) => {
+                card = c;
             }
-        }
+            None => {}
+        },
     }
     card
 }
@@ -323,14 +321,12 @@ pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> C
         Some(c) => {
             card = c;
         }
-        None => {
-            match db::query_card_regex(&card.name, &card.series).await {
-                Some(c) => {
-                    card = c;
-                }
-                None => {}
+        None => match db::query_card_regex(&card.name, &card.series).await {
+            Some(c) => {
+                card = c;
             }
-        }
+            None => {}
+        },
     }
     card
 }
