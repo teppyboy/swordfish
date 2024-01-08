@@ -139,9 +139,13 @@ pub async fn write_card(mut card: Card) -> Result<(), String> {
 pub async fn write_cards(cards: Vec<Card>) -> Result<(), String> {
     let mut new_cards: Vec<Card> = Vec::new();
     let mut handles: Vec<task::JoinHandle<Result<Option<Card>, String>>> = Vec::new();
+    let start = SystemTime::now();
+    let current_time_ts = start
+    .duration_since(UNIX_EPOCH).unwrap();
     for mut card in cards {
+        let current_time_ts_clone = current_time_ts.clone();
         trace!("Writing card: {:?}", card);
-        handles.push(task::spawn(async {
+        handles.push(task::spawn(async move {
             let old_card = KATANA
                 .get()
                 .unwrap()
@@ -154,11 +158,7 @@ pub async fn write_cards(cards: Vec<Card>) -> Result<(), String> {
                 )
                 .await
                 .unwrap();
-            let start = SystemTime::now();
-            let current_time_ts = start
-                .duration_since(UNIX_EPOCH)
-                .expect("Time went backwards");
-            card.last_update_ts = current_time_ts.as_secs() as i64;
+            card.last_update_ts = current_time_ts_clone.as_secs() as i64;
             if old_card.is_some() {
                 match KATANA
                     .get()

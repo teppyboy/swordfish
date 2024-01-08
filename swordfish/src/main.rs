@@ -9,6 +9,8 @@ use serenity::prelude::*;
 use std::env;
 use std::path::Path;
 use std::sync::OnceLock;
+use std::thread::current;
+use std::time::{SystemTime, UNIX_EPOCH};
 use swordfish_common::*;
 
 use crate::config::Config;
@@ -274,7 +276,20 @@ async fn main() {
 
 #[command]
 async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.reply(ctx, "Pong!").await?;
+    let start = SystemTime::now();
+    let current_time_ts = start.duration_since(UNIX_EPOCH).unwrap().as_micros() as f64;
+    let msg_ts = msg.timestamp.timestamp_micros() as f64;
+    helper::info_message(
+        ctx,
+        msg,
+        format!(
+            "Time taken to receive message: `{}ms`\n\n\
+    This only reflects the time taken for the bot to receive the message from Discord server.",
+            (current_time_ts - msg_ts) / 1000.0  // Message timestamp can't be negative
+        ),
+        Some("Ping".to_string()),
+    )
+    .await;
     Ok(())
 }
 
