@@ -25,7 +25,7 @@ pub fn init() {
         .unwrap();
 }
 
-pub async fn query_card(name: &str, series: &str) -> Option<Card> {
+pub async fn query_card(name: &String, series: &String) -> Option<Card> {
     KATANA
         .get()
         .unwrap()
@@ -33,6 +33,51 @@ pub async fn query_card(name: &str, series: &str) -> Option<Card> {
             mongodb::bson::doc! {
                 "name": name,
                 "series": series
+            },
+            None,
+        )
+        .await
+        .unwrap()
+}
+
+pub async fn query_card_regex(name: &String, series: &String) -> Option<Card> {
+    let mut name_regex = String::new();
+    let mut ascii_name = String::new();
+    for c in name.chars() {
+        if c.is_ascii_alphanumeric() {
+            ascii_name.push(c);
+        } else {
+            ascii_name.push(' ');
+        }
+    }
+    ascii_name.split_whitespace().for_each(|word| {
+        name_regex.push_str("(?=.*\\b");
+        name_regex.push_str(word.to_lowercase().as_str());
+        name_regex.push_str("\\b)");
+    });
+    name_regex.push_str(".+");
+    let mut series_regex = String::new();
+    let mut ascii_series = String::new();
+    for c in series.chars() {
+        if c.is_ascii_alphanumeric() {
+            ascii_series.push(c);
+        } else {
+            ascii_series.push(' ');
+        }
+    }
+    ascii_series.split_whitespace().for_each(|word| {
+        series_regex.push_str("(?=.*\\b");
+        series_regex.push_str(word.to_lowercase().as_str());
+        series_regex.push_str("\\b)");
+    });
+    series_regex.push_str(".+");
+    KATANA
+        .get()
+        .unwrap()
+        .find_one(
+            mongodb::bson::doc! {
+                "name": {"$regex": name_regex, "$options" : "i"},
+                "series": {"$regex": series_regex, "$options" : "i"}
             },
             None,
         )

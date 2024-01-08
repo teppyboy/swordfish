@@ -253,11 +253,18 @@ pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) ->
         last_update_ts: 0,
     };
     // Read the wishlist number
-    match db::query_card(&card.name.as_str(), &card.series.as_str()).await {
+    match db::query_card(&card.name, &card.series).await {
         Some(c) => {
             card = c;
         }
-        None => {}
+        None => {
+            match db::query_card_regex(&card.name, &card.series).await {
+                Some(c) => {
+                    card = c;
+                }
+                None => {}
+            }
+        }
     }
     card
 }
@@ -312,11 +319,18 @@ pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> C
         last_update_ts: 0,
     };
     // Read the wishlist number
-    match db::query_card(&card.name.as_str(), &card.series.as_str()).await {
+    match db::query_card(&card.name, &card.series).await {
         Some(c) => {
             card = c;
         }
-        None => {}
+        None => {
+            match db::query_card_regex(&card.name, &card.series).await {
+                Some(c) => {
+                    card = c;
+                }
+                None => {}
+            }
+        }
     }
     card
 }
