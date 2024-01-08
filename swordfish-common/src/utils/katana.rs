@@ -1,9 +1,9 @@
-use crate::structs::Card;
+use crate::structs::Character;
 use log::{error, trace};
 
 // atopwl
-pub fn parse_cards_from_qingque_atopwl(content: &String) -> Vec<Card> {
-    let mut cards: Vec<Card> = Vec::new();
+pub fn parse_cards_from_qingque_atopwl(content: &String) -> Vec<Character> {
+    let mut cards: Vec<Character> = Vec::new();
     for line in content.split("\n") {
         trace!("Parsing line: {}", line);
         let mut line_split = line.split(" · ");
@@ -48,11 +48,10 @@ pub fn parse_cards_from_qingque_atopwl(content: &String) -> Vec<Card> {
             }
             None => continue,
         };
-        let card = Card {
+        let card = Character {
             wishlist: Some(wishlist),
             name,
             series,
-            print: 0,
             last_update_ts: 0,
         };
         trace!("Parsed card: {:?}", card);
@@ -62,8 +61,8 @@ pub fn parse_cards_from_qingque_atopwl(content: &String) -> Vec<Card> {
 }
 
 // kc o:w
-pub fn parse_cards_from_katana_kc_ow(content: &String) -> Vec<Card> {
-    let mut cards: Vec<Card> = Vec::new();
+pub fn parse_cards_from_katana_kc_ow(content: &String) -> Vec<Character> {
+    let mut cards: Vec<Character> = Vec::new();
     for line in content.split("\n") {
         trace!("Parsing line: {}", line);
         if !line.ends_with("**") {
@@ -103,11 +102,10 @@ pub fn parse_cards_from_katana_kc_ow(content: &String) -> Vec<Card> {
             }
             None => continue,
         };
-        let card = Card {
+        let card = Character {
             wishlist: Some(wishlist),
             name,
             series,
-            print: 0,
             last_update_ts: 0,
         };
         trace!("Parsed card: {:?}", card);
@@ -122,8 +120,8 @@ pub fn parse_cards_from_katana_kc_ow(content: &String) -> Vec<Card> {
 ///
 /// "content" is `fields[0].value`
 ///
-pub fn parse_cards_from_katana_klu_results(content: &String) -> Vec<Card> {
-    let mut cards: Vec<Card> = Vec::new();
+pub fn parse_cards_from_katana_klu_results(content: &String) -> Vec<Character> {
+    let mut cards: Vec<Character> = Vec::new();
     for line in content.split("\n") {
         trace!("Parsing line: {}", line);
         if !line.ends_with("**") {
@@ -174,11 +172,10 @@ pub fn parse_cards_from_katana_klu_results(content: &String) -> Vec<Card> {
                 continue;
             }
         };
-        let card = Card {
+        let card = Character {
             wishlist: Some(wishlist),
             name,
             series,
-            print: 0,
             last_update_ts: 0,
         };
         trace!("Parsed card: {:?}", card);
@@ -188,7 +185,7 @@ pub fn parse_cards_from_katana_klu_results(content: &String) -> Vec<Card> {
 }
 
 // klu (Character Lookup)
-pub fn parse_cards_from_katana_klu_lookup(content: &String) -> Option<Card> {
+pub fn parse_cards_from_katana_klu_lookup(content: &String) -> Option<Character> {
     let mut lines = content.split("\n");
     // Character
     let mut line_split = lines.nth(0).unwrap().split(" · ");
@@ -242,11 +239,10 @@ pub fn parse_cards_from_katana_klu_lookup(content: &String) -> Option<Card> {
         }
         None => return None,
     };
-    Some(Card {
+    Some(Character {
         wishlist: Some(wishlist),
         name,
         series,
-        print: 0,
         last_update_ts: 0,
     })
 }

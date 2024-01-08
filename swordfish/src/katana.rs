@@ -10,7 +10,7 @@ use serenity::model::channel::Message;
 use std::io::Cursor;
 use std::sync::LazyLock;
 use swordfish_common::database::katana as db;
-use swordfish_common::structs::Card;
+use swordfish_common::structs::{Character, DroppedCard};
 use swordfish_common::{error, trace, warn};
 use tokio::task;
 use tokio::time::Instant;
@@ -184,7 +184,7 @@ fn save_image_if_trace(img: &image::DynamicImage, path: &str) {
     }
 }
 
-pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) -> Card {
+pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) -> DroppedCard {
     trace!("Spawning threads for analyzing card...");
     // Read the name and the series
     let card_clone = card.clone();
@@ -245,29 +245,32 @@ pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) ->
     let series = series_thread.await.unwrap();
     trace!("Series: {}", series);
     // TODO: Read the print number
-    let mut card = Card {
+    let mut character = Character {
         wishlist: None,
         name,
         series,
-        print: 0,
         last_update_ts: 0,
     };
     // Read the wishlist number
-    match db::query_card(&card.name, &card.series).await {
+    match db::query_character(&character.name, &character.series).await {
         Some(c) => {
-            card = c;
+            character = c;
         }
-        None => match db::query_card_regex(&card.name, &card.series).await {
+        None => match db::query_character_regex(&character.name, &character.series).await {
             Some(c) => {
-                card = c;
+                character = c;
             }
             None => {}
         },
     }
-    card
+    DroppedCard {
+        character,
+        print: 0,
+        edition: 0,
+    }
 }
 
-pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> Card {
+pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> DroppedCard {
     trace!("Spawning threads for analyzing card...");
     // Read the name and the series
     let card_clone = card.clone();
@@ -309,29 +312,32 @@ pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> C
     let series = series_thread.await.unwrap();
     trace!("Series: {}", series);
     // TODO: Read the print number
-    let mut card = Card {
+    let mut character = Character {
         wishlist: None,
         name,
         series,
-        print: 0,
         last_update_ts: 0,
     };
     // Read the wishlist number
-    match db::query_card(&card.name, &card.series).await {
+    match db::query_character(&character.name, &character.series).await {
         Some(c) => {
-            card = c;
+            character = c;
         }
-        None => match db::query_card_regex(&card.name, &card.series).await {
+        None => match db::query_character_regex(&character.name, &character.series).await {
             Some(c) => {
-                card = c;
+                character = c;
             }
             None => {}
         },
     }
-    card
+    DroppedCard {
+        character,
+        print: 0,
+        edition: 0,
+    }
 }
 
-async fn execute_analyze_drop(image: DynamicImage, count: u32) -> Card {
+async fn execute_analyze_drop(image: DynamicImage, count: u32) -> DroppedCard {
     let config = CONFIG.get().unwrap();
     match config.tesseract.backend.as_str() {
         "libtesseract" => analyze_card_libtesseract(image, count).await,
@@ -342,7 +348,7 @@ async fn execute_analyze_drop(image: DynamicImage, count: u32) -> Card {
     }
 }
 
-pub async fn analyze_drop_message(message: &Message) -> Result<Vec<Card>, String> {
+pub async fn analyze_drop_message(message: &Message) -> Result<Vec<DroppedCard>, String> {
     if message.attachments.len() < 1 {
         return Err("No attachments found".to_string());
     };
@@ -369,7 +375,7 @@ pub async fn analyze_drop_message(message: &Message) -> Result<Vec<Card>, String
     let cards_count = img.width() / distance;
     trace!("Cropping {} cards...", cards_count);
     let mut jobs: Vec<_> = Vec::new();
-    let mut cards: Vec<Card> = Vec::with_capacity(cards_count.try_into().unwrap());
+    let mut cards: Vec<DroppedCard> = Vec::with_capacity(cards_count.try_into().unwrap());
     for index in 0..cards_count {
         let i = index.clone();
         let x = 29 + distance * i;
@@ -384,7 +390,7 @@ pub async fn analyze_drop_message(message: &Message) -> Result<Vec<Card>, String
             Ok((i, execute_analyze_drop(card_img, i).await))
         });
     }
-    let mut handles: Vec<task::JoinHandle<Result<(u32, Card), String>>> = Vec::new();
+    let mut handles: Vec<task::JoinHandle<Result<(u32, DroppedCard), String>>> = Vec::new();
     for job in jobs {
         let handle = task::spawn(job);
         handles.push(handle);
@@ -415,7 +421,7 @@ pub async fn handle_drop_message(ctx: &Context, msg: &Message) {
             let mut reply_str = String::new();
             for card in cards {
                 // reply_str.push_str(&format!("{:?}\n", card));
-                let wishlist_str: String = match card.wishlist {
+                let wishlist_str: String = match card.character.wishlist {
                     Some(wishlist) => {
                         let mut out_str = wishlist.to_string();
                         while out_str.len() < 5 {
@@ -425,7 +431,7 @@ pub async fn handle_drop_message(ctx: &Context, msg: &Message) {
                     }
                     None => "None ".to_string(),
                 };
-                let last_update_ts_str = match card.last_update_ts {
+                let last_update_ts_str = match card.character.last_update_ts {
                     0 => "`Never`".to_string(),
                     ts => {
                         format!("<t:{}:R>", ts.to_string())
@@ -434,7 +440,11 @@ pub async fn handle_drop_message(ctx: &Context, msg: &Message) {
                 reply_str.push_str(
                     format!(
                         ":heart: `{}` • `{}` • **{}** • {} • {}\n",
-                        wishlist_str, card.print, card.name, card.series, last_update_ts_str
+                        wishlist_str,
+                        card.print,
+                        card.character.name,
+                        card.character.series,
+                        last_update_ts_str
                     )
                     .as_str(),
                 )

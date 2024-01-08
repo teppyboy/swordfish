@@ -31,7 +31,7 @@ async fn parse_katana_embed(embed: &Embed) {
                     return;
                 }
                 debug!("Importing cards from Katana 'Card Collection'");
-                match database::katana::write_cards(cards).await {
+                match database::katana::write_characters(cards).await {
                     Ok(_) => {
                         debug!("Imported successully");
                     }
@@ -56,7 +56,7 @@ async fn parse_katana_embed(embed: &Embed) {
                     }
                 };
                 debug!("Importing a card from Katana 'Character Lookup'");
-                match database::katana::write_card(card).await {
+                match database::katana::write_character(card).await {
                     Ok(_) => {
                         debug!("Imported successully");
                     }
@@ -78,7 +78,7 @@ async fn parse_katana_embed(embed: &Embed) {
                     return;
                 }
                 debug!("Importing cards from Katana 'Character Results'");
-                match database::katana::write_cards(cards).await {
+                match database::katana::write_characters(cards).await {
                     Ok(_) => {
                         debug!("Imported successully");
                     }
@@ -110,7 +110,7 @@ async fn parse_qingque_event(ctx: &Context, event: MessageUpdateEvent) -> Result
                 &embed.description.as_ref().unwrap(),
             );
             debug!("Importing cards from Qingque 'Top Wishlist'");
-            match database::katana::write_cards(cards).await {
+            match database::katana::write_characters(cards).await {
                 Ok(_) => {
                     debug!("Imported successully");
                 }

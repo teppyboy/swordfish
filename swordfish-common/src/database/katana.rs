@@ -1,12 +1,12 @@
 use crate::database;
-use crate::structs::Card;
+use crate::structs::Character;
 use mongodb::Collection;
 use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::task;
 use tracing::trace;
 
-pub static KATANA: OnceLock<Collection<Card>> = OnceLock::new();
+pub static KATANA: OnceLock<Collection<Character>> = OnceLock::new();
 
 ///
 /// Initialize the "katana" collection in MongoDB
@@ -20,12 +20,12 @@ pub fn init() {
             database::MONGO_DATABASE
                 .get()
                 .unwrap()
-                .collection::<Card>("katana"),
+                .collection::<Character>("katana"),
         )
         .unwrap();
 }
 
-pub async fn query_card(name: &String, series: &String) -> Option<Card> {
+pub async fn query_character(name: &String, series: &String) -> Option<Character> {
     KATANA
         .get()
         .unwrap()
@@ -40,7 +40,7 @@ pub async fn query_card(name: &String, series: &String) -> Option<Card> {
         .unwrap()
 }
 
-pub async fn query_card_regex(name: &String, series: &String) -> Option<Card> {
+pub async fn query_character_regex(name: &String, series: &String) -> Option<Character> {
     let mut name_regex = String::new();
     let mut ascii_name = String::new();
     for c in name.chars() {
@@ -85,7 +85,7 @@ pub async fn query_card_regex(name: &String, series: &String) -> Option<Card> {
         .unwrap()
 }
 
-pub async fn write_card(mut card: Card) -> Result<(), String> {
+pub async fn write_character(mut card: Character) -> Result<(), String> {
     let old_card = KATANA
         .get()
         .unwrap()
@@ -136,12 +136,11 @@ pub async fn write_card(mut card: Card) -> Result<(), String> {
     }
 }
 
-pub async fn write_cards(cards: Vec<Card>) -> Result<(), String> {
-    let mut new_cards: Vec<Card> = Vec::new();
-    let mut handles: Vec<task::JoinHandle<Result<Option<Card>, String>>> = Vec::new();
+pub async fn write_characters(cards: Vec<Character>) -> Result<(), String> {
+    let mut new_cards: Vec<Character> = Vec::new();
+    let mut handles: Vec<task::JoinHandle<Result<Option<Character>, String>>> = Vec::new();
     let start = SystemTime::now();
-    let current_time_ts = start
-    .duration_since(UNIX_EPOCH).unwrap();
+    let current_time_ts = start.duration_since(UNIX_EPOCH).unwrap();
     for mut card in cards {
         let current_time_ts_clone = current_time_ts.clone();
         trace!("Writing card: {:?}", card);

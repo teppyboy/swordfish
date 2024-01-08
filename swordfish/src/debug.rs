@@ -337,7 +337,7 @@ pub async fn dbg_kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
             let mut reply_str = String::new();
             for card in cards {
                 // reply_str.push_str(&format!("{:?}\n", card));
-                let wishlist_str: String = match card.wishlist {
+                let wishlist_str: String = match card.character.wishlist {
                     Some(wishlist) => {
                         let mut out_str = wishlist.to_string();
                         while out_str.len() < 5 {
@@ -347,7 +347,7 @@ pub async fn dbg_kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
                     }
                     None => "None ".to_string(),
                 };
-                let last_update_ts_str = match card.last_update_ts {
+                let last_update_ts_str = match card.character.last_update_ts {
                     0 => "`Never`".to_string(),
                     ts => {
                         format!("<t:{}:R>", ts.to_string())
@@ -356,7 +356,11 @@ pub async fn dbg_kdropanalyze(ctx: &Context, msg: &Message) -> CommandResult {
                 reply_str.push_str(
                     format!(
                         ":heart: `{}` • `{}` • **{}** • {} • {}\n",
-                        wishlist_str, card.print, card.name, card.series, last_update_ts_str
+                        wishlist_str,
+                        card.print,
+                        card.character.name,
+                        card.character.series,
+                        last_update_ts_str
                     )
                     .as_str(),
                 )

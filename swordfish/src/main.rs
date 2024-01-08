@@ -9,7 +9,6 @@ use serenity::prelude::*;
 use std::env;
 use std::path::Path;
 use std::sync::OnceLock;
-use std::thread::current;
 use std::time::{SystemTime, UNIX_EPOCH};
 use swordfish_common::*;
 
@@ -93,7 +92,7 @@ async fn parse_qingque_event(ctx: &Context, event: MessageUpdateEvent) -> Result
                 &embed.description.as_ref().unwrap(),
             );
             debug!("Importing cards from Qingque 'Top Wishlist'");
-            match database::katana::write_cards(cards).await {
+            match database::katana::write_characters(cards).await {
                 Ok(_) => {
                     debug!("Imported successully");
                 }
@@ -156,7 +155,7 @@ async fn parse_katana_embed(embed: &Embed) {
                     return;
                 }
                 debug!("Importing cards from Katana 'Card Collection'");
-                match database::katana::write_cards(cards).await {
+                match database::katana::write_characters(cards).await {
                     Ok(_) => {
                         debug!("Imported successully");
                     }
@@ -181,7 +180,7 @@ async fn parse_katana_embed(embed: &Embed) {
                     }
                 };
                 debug!("Importing a card from Katana 'Character Lookup'");
-                match database::katana::write_card(card).await {
+                match database::katana::write_character(card).await {
                     Ok(_) => {
                         debug!("Imported successully");
                     }
@@ -203,7 +202,7 @@ async fn parse_katana_embed(embed: &Embed) {
                     return;
                 }
                 debug!("Importing cards from Katana 'Character Results'");
-                match database::katana::write_cards(cards).await {
+                match database::katana::write_characters(cards).await {
                     Ok(_) => {
                         debug!("Imported successully");
                     }
@@ -285,7 +284,7 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
         format!(
             "Time taken to receive message: `{}ms`\n\n\
     This only reflects the time taken for the bot to receive the message from Discord server.",
-            (current_time_ts - msg_ts) / 1000.0  // Message timestamp can't be negative
+            (current_time_ts - msg_ts) / 1000.0 // Message timestamp can't be negative
         ),
         Some("Ping".to_string()),
     )
