@@ -8,9 +8,9 @@ use serenity::model::channel::Message;
 use serenity::prelude::*;
 use std::env;
 use std::path::Path;
-use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 use swordfish_common::*;
+use tokio::sync::OnceCell;
 
 use crate::config::Config;
 use crate::tesseract::libtesseract;
@@ -23,7 +23,7 @@ mod template;
 mod tesseract;
 
 const GITHUB_URL: &str = "https://github.com/teppyboy/swordfish";
-static CONFIG: OnceLock<Config> = OnceLock::new();
+static CONFIG: OnceCell<Config> = OnceCell::const_new();
 
 #[group]
 #[commands(ping, debug, info)]

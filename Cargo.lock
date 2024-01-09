@@ -2220,7 +2220,6 @@ dependencies = [
  "dotenvy",
  "image",
  "leptess",
- "regex",
  "rusty-tesseract",
  "serde",
  "serenity 0.12.0",

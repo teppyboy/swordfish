@@ -4,11 +4,11 @@ use mongodb::bson::doc;
 use mongodb::options::ClientOptions;
 use mongodb::{Client, Database};
 use std::env;
-use std::sync::OnceLock;
+use tokio::sync::OnceCell;
 use tracing::info;
 
-static MONGO_CLIENT: OnceLock<Client> = OnceLock::new();
-static MONGO_DATABASE: OnceLock<Database> = OnceLock::new();
+static MONGO_CLIENT: OnceCell<Client> = OnceCell::const_new();
+static MONGO_DATABASE: OnceCell<Database> = OnceCell::const_new();
 
 pub async fn init() {
     let mut options =

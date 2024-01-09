@@ -1,12 +1,12 @@
 use crate::database;
 use crate::structs::Character;
 use mongodb::Collection;
-use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tokio::sync::OnceCell;
 use tokio::task;
 use tracing::trace;
 
-pub static KATANA: OnceLock<Collection<Character>> = OnceLock::new();
+pub static KATANA: OnceCell<Collection<Character>> = OnceCell::const_new();
 
 ///
 /// Initialize the "katana" collection in MongoDB

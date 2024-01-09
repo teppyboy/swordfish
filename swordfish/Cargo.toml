@@ -9,7 +9,6 @@ edition = "2021"
 dotenvy = "0.15.7"
 image = "0.24.7"
 leptess = "0.14.0"
-regex = "1.10.2"
 rusty-tesseract = "1.1.9"
 serde = "1.0.193"
 serenity = { version = "0.12.0", features = ["builder"] }

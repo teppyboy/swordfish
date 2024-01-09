@@ -3,19 +3,17 @@ use crate::tesseract::{libtesseract, subprocess};
 use crate::CONFIG;
 use image::imageops::colorops::contrast_in_place;
 use image::io::Reader as ImageReader;
-use image::{DynamicImage, ImageFormat};
-use regex::Regex;
+use image::{DynamicImage, GenericImage, GenericImageView, ImageBuffer, ImageFormat, Rgba};
 use serenity::all::Context;
 use serenity::model::channel::Message;
 use std::io::Cursor;
-use std::sync::LazyLock;
 use swordfish_common::database::katana as db;
 use swordfish_common::structs::{Character, DroppedCard};
 use swordfish_common::{error, trace, warn};
 use tokio::task;
 use tokio::time::Instant;
 
-static ALLOWED_CHARS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\-!.':() ]").unwrap());
+const ALLOWED_CHARS: [char; 10] = [' ', '-', '.', '!', ':', '(', ')', '\'', '/', '\''];
 const CARD_NAME_X_OFFSET: u32 = 22;
 const CARD_NAME_Y_OFFSET: u32 = 28;
 const CARD_NAME_WIDTH: u32 = 202 - CARD_NAME_X_OFFSET;
@@ -45,6 +43,7 @@ fn fix_tesseract_string(text: &mut String) {
     // e.g. "We Never Learn\nN" -> "We Never Learn"
     trace!("Text: {}", text);
     if text.ends_with("\nN") {
+        text.truncate(text.len() - 2);
         for _ in 0..2 {
             text.pop();
         }
@@ -56,11 +55,10 @@ fn fix_tesseract_string(text: &mut String) {
     // Workaround for a bug the text
     trace!("Text: {}", text);
     if text.starts_with("- ") || text.starts_with("-.") {
-        text.remove(0);
-        text.remove(0);
+        text.drain(0..2);
     }
     // Remove the first character if it is not alphanumeric
-    if !text.clone().chars().nth(0).unwrap().is_ascii_alphanumeric() {
+    if !text.starts_with(|c: char| c.is_ascii_alphanumeric()) {
         text.remove(0);
     }
     // Workaround IR -> Ik
@@ -81,11 +79,13 @@ fn fix_tesseract_string(text: &mut String) {
         }
     }
     // Workaround for "\n." (and others in the future)
-    for (i, c) in text.clone().chars().enumerate() {
+    let text_clone = text.clone();
+    let mut clone_chars = text_clone.chars();
+    for (i, c) in clone_chars.clone().enumerate() {
         if c != '\n' {
             continue;
         }
-        let prev_char = match text.chars().nth(i - 1) {
+        let prev_char = match clone_chars.nth(i - 1) {
             Some(c) => c,
             None => continue,
         };
@@ -97,7 +97,7 @@ fn fix_tesseract_string(text: &mut String) {
         }
         // Fix for "Asobi ni Iku lo Asobi ni Oide" -> "Asobi ni Iku yo! Asobi ni Oide"
         if prev_char == 'l' {
-            let prev_prev_char = match text.chars().nth(i - 2) {
+            let prev_prev_char = match clone_chars.nth(i - 2) {
                 Some(c) => c,
                 None => continue,
             };
@@ -109,7 +109,7 @@ fn fix_tesseract_string(text: &mut String) {
                 text.insert_str(i - 2, "yo!")
             }
         }
-        let next_char = match text.chars().nth(i + 1) {
+        let next_char = match clone_chars.nth(i + 1) {
             Some(c) => c,
             None => break,
         };
@@ -125,7 +125,7 @@ fn fix_tesseract_string(text: &mut String) {
     }
     // Remove all non-alphanumeric characters
     trace!("Text: {}", text);
-    text.retain(|c| ALLOWED_CHARS_REGEX.is_match(&c.to_string()) || c.is_ascii_alphanumeric());
+    text.retain(|c| ALLOWED_CHARS.contains(&c) || c.is_ascii_alphanumeric());
     // Fix "mn" -> "III"
     trace!("Text: {}", text);
     if text.ends_with("mn") {
@@ -157,20 +157,29 @@ fn fix_tesseract_string(text: &mut String) {
     }
     // Workaround if the first character is a space
     trace!("Text: {}", text);
-    while text.starts_with(" ") {
+    let mut leading_spaces = 0;
+    let mut ending_spaces = 0;
+    while text.starts_with(|c: char| c.is_whitespace()) {
         trace!("Removing leading space");
-        text.remove(0);
+        leading_spaces += 1;
     }
     // Workaround if the last character is a space
-    trace!("Text: {}", text);
-    while text.ends_with(" ") {
+    while text.ends_with(|c: char| c.is_whitespace()) {
         trace!("Removing ending space");
-        text.pop();
+        ending_spaces += 1;
+    }
+    // Remove the ending spaces
+    if ending_spaces > 0 {
+        text.truncate(text.len() - ending_spaces);
+    }
+    // Remove the leading spaces
+    if leading_spaces > 0 {
+        text.drain(0..leading_spaces);
     }
     trace!("Text (final): {}", text);
 }
 
-fn save_image_if_trace(img: &image::DynamicImage, path: &str) {
+fn save_image_if_trace(img: &DynamicImage, path: &str) {
     let log_lvl = CONFIG.get().unwrap().log.level.as_str();
     if log_lvl == "trace" {
         match img.save(path) {
@@ -184,21 +193,47 @@ fn save_image_if_trace(img: &image::DynamicImage, path: &str) {
     }
 }
 
+fn image_with_white_padding(im: DynamicImage) -> DynamicImage {
+    // Partially copied from https://github.com/PureSci/nori/blob/main/rust-workers/src/drop.rs#L102C1-L121C6
+    let mut new_im: DynamicImage =
+        ImageBuffer::<Rgba<u8>, Vec<u8>>::new(im.width() + 14, im.height() + 14).into();
+    let white = Rgba([255, 255, 255, 255]);
+    for y in 0..im.height() {
+        for x in 0..im.width() {
+            let p = im.get_pixel(x, y);
+            new_im.put_pixel(x + 7, y + 7, p.to_owned());
+        }
+    }
+    for y in 0..7 {
+        for x in 0..im.width() + 14 {
+            new_im.put_pixel(x, y, white);
+            new_im.put_pixel(x, y + im.height() + 7, white);
+        }
+    }
+    for x in 0..7 {
+        for y in 7..im.height() + 7 {
+            new_im.put_pixel(x, y, white);
+            new_im.put_pixel(x + im.width() + 7, y, white);
+        }
+    }
+    new_im
+}
+
 pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) -> DroppedCard {
     trace!("Spawning threads for analyzing card...");
     // Read the name and the series
     let card_clone = card.clone();
-    let name_thread = task::spawn_blocking(move || unsafe {
+    let name_thread = task::spawn_blocking(move || {
         // let mut leptess =
         //     libtesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
-        let binding = libtesseract::get_tesseract();
+        let binding = unsafe { libtesseract::get_tesseract() };
         let mut leptess = binding.lock().unwrap();
-        let name_img = card_clone.crop_imm(
+        let name_img = image_with_white_padding(card_clone.crop_imm(
             CARD_NAME_X_OFFSET,
             CARD_NAME_Y_OFFSET,
             CARD_NAME_WIDTH,
             CARD_NAME_HEIGHT,
-        );
+        ));
         let mut buffer: Cursor<Vec<u8>> = Cursor::new(Vec::new());
         match name_img.write_to(&mut buffer, ImageFormat::Png) {
             Ok(_) => {}
@@ -206,24 +241,27 @@ pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) ->
                 panic!("{}", format!("Failed to write image: {:?}", why));
             }
         };
-        save_image_if_trace(&name_img, format!("debug/4-{}-name.png", count).as_str());
+        save_image_if_trace(
+            &name_img,
+            format!("debug/4-libtesseract-{}-name.png", count).as_str(),
+        );
         leptess.set_image_from_mem(&buffer.get_mut()).unwrap();
         let mut name_str = leptess.get_utf8_text().expect("Failed to read name");
         fix_tesseract_string(&mut name_str);
         name_str
     });
     let card_clone = card.clone();
-    let series_thread = task::spawn_blocking(move || unsafe {
+    let series_thread = task::spawn_blocking(move || {
         // let mut leptess =
         //     libtesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
-        let binding = libtesseract::get_tesseract();
+        let binding = unsafe { libtesseract::get_tesseract() };
         let mut leptess = binding.lock().unwrap();
-        let series_img = card_clone.crop_imm(
+        let series_img = image_with_white_padding(card_clone.crop_imm(
             CARD_SERIES_X_OFFSET,
             CARD_SERIES_Y_OFFSET,
             CARD_SERIES_WIDTH,
             CARD_SERIES_HEIGHT,
-        );
+        ));
         let mut buffer: Cursor<Vec<u8>> = Cursor::new(Vec::new());
         match series_img.write_to(&mut buffer, ImageFormat::Png) {
             Ok(_) => {}
@@ -233,10 +271,10 @@ pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) ->
         };
         save_image_if_trace(
             &series_img,
-            format!("debug/4-{}-series.png", count).as_str(),
+            format!("debug/4-libtesseract-{}-series.png", count).as_str(),
         );
         leptess.set_image_from_mem(&buffer.get_mut()).unwrap();
-        let mut series_str = leptess.get_utf8_text().expect("Failed to read name");
+        let mut series_str = leptess.get_utf8_text().expect("Failed to read series");
         fix_tesseract_string(&mut series_str);
         series_str
     });
@@ -275,12 +313,12 @@ pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> D
     // Read the name and the series
     let card_clone = card.clone();
     let name_thread = task::spawn_blocking(move || {
-        let name_img = card_clone.crop_imm(
+        let name_img = image_with_white_padding(card_clone.crop_imm(
             CARD_NAME_X_OFFSET,
             CARD_NAME_Y_OFFSET,
             CARD_NAME_WIDTH,
             CARD_NAME_HEIGHT,
-        );
+        ));
         let img = subprocess::Image::from_dynamic_image(&name_img).unwrap();
         save_image_if_trace(
             &name_img,
@@ -292,12 +330,12 @@ pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> D
     });
     let card_clone = card.clone();
     let series_thread = task::spawn_blocking(move || {
-        let series_img = card_clone.crop_imm(
+        let series_img = image_with_white_padding(card_clone.crop_imm(
             CARD_SERIES_X_OFFSET,
             CARD_SERIES_Y_OFFSET,
             CARD_SERIES_WIDTH,
             CARD_SERIES_HEIGHT,
-        );
+        ));
         let img = subprocess::Image::from_dynamic_image(&series_img).unwrap();
         save_image_if_trace(
             &series_img,
@@ -368,7 +406,7 @@ pub async fn analyze_drop_message(message: &Message) -> Result<Vec<DroppedCard>,
     img = img.grayscale();
     save_image_if_trace(&img, "debug/1-grayscale.png");
     trace!("Increasing contrast of the image...");
-    contrast_in_place(&mut img, 127.0);
+    contrast_in_place(&mut img, 127.0 / 4.0);
     save_image_if_trace(&img, "debug/2-contrast.png");
     // Cropping cards
     let distance = 257 - 29 + 305 - 259;
