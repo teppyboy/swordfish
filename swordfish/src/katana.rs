@@ -159,12 +159,13 @@ fn fix_tesseract_string(text: &mut String) {
     trace!("Text: {}", text);
     let mut leading_spaces = 0;
     let mut ending_spaces = 0;
-    while text.starts_with(|c: char| c.is_whitespace()) {
+    let mut text_chars = text.chars();
+    while text_chars.nth(0).unwrap().is_whitespace() {
         trace!("Removing leading space");
         leading_spaces += 1;
     }
     // Workaround if the last character is a space
-    while text.ends_with(|c: char| c.is_whitespace()) {
+    while text_chars.nth_back(0).unwrap().is_whitespace() {
         trace!("Removing ending space");
         ending_spaces += 1;
     }
