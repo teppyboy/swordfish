@@ -93,6 +93,29 @@ async fn parse_katana_embed(embed: &Embed) {
     };
 }
 
+async fn parse_calf_event(ctx: &Context, event: MessageUpdateEvent) -> Result<(), String> {
+    if event.content.is_none() {
+        return Ok(());
+    }
+    let content = event.content.unwrap();
+    if content.contains("Apricot v6 Drop Analysis Engine") {
+        let cards = utils::katana::parse_cards_from_calf_analysis(&content);
+        if cards.len() == 0 {
+            return Ok(());
+        }
+        debug!("Importing cards from Calf Analysis");
+        match database::katana::write_characters(cards).await {
+            Ok(_) => {
+                debug!("Imported successully");
+            }
+            Err(why) => {
+                error!("Failed to import card: {:?}", why);
+            }
+        }
+    }
+    Ok(())
+}
+
 async fn parse_qingque_event(ctx: &Context, event: MessageUpdateEvent) -> Result<(), String> {
     if event.embeds.is_none() || event.embeds.clone().unwrap().len() == 0 {
         return Ok(());
@@ -173,6 +196,9 @@ impl EventHandler for Handler {
             }
             constants::QINGQUE_ID => {
                 parse_qingque_event(&ctx, event).await.unwrap();
+            }
+            constants::CALF_ID => {
+                parse_calf_event(&ctx, event).await.unwrap();
             }
             _ => {}
         }

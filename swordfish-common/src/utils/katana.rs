@@ -64,6 +64,8 @@ pub fn parse_cards_from_qingque_atopwl(content: &String) -> Vec<Character> {
 pub fn parse_cards_from_katana_kc_ow(content: &String) -> Vec<Character> {
     let mut cards: Vec<Character> = Vec::new();
     for line in content.split("\n") {
+        let mut line = line.to_string();
+        line.remove_matches("~~");
         trace!("Parsing line: {}", line);
         if !line.ends_with("**") {
             continue;
@@ -245,4 +247,79 @@ pub fn parse_cards_from_katana_klu_lookup(content: &String) -> Option<Character>
         series,
         last_update_ts: 0,
     })
+}
+
+pub fn parse_cards_from_calf_analysis(content: &String) -> Vec<Character> {
+    let mut cards: Vec<Character> = Vec::new();
+    let mut lines = content.split("\n");
+    // Skip first 2 lines
+    lines.nth(1);
+    for line in lines {
+        trace!("Parsing line: {}", line);
+        let mut line_string = line.to_string();
+        // Remove first `
+        match line.find('`') {
+            Some(i) => {
+                line_string.drain(0..i + 1);
+            }
+            None => continue,
+        }
+        let mut line_split = line_string.split('`');
+        let wishlist = match line_split.nth(0) {
+            Some(wishlist_str) => {
+                let mut wl_string = wishlist_str.to_string();
+                // Remove ♡
+                wl_string.remove(0);
+                // Remove "," in the number
+                // I don't know, I've never seen this myself.
+                wl_string.remove_matches(",");
+                // Remove whitespace
+                wl_string = wl_string
+                    .split_whitespace()
+                    .collect::<String>()
+                    .trim()
+                    .to_string();
+                trace!("Formatted wishlist number: {}", wl_string);
+                match wl_string.parse::<u32>() {
+                    Ok(wishlist) => wishlist,
+                    Err(_) => {
+                        error!("Failed to parse wishlist number: {}", wishlist_str);
+                        continue;
+                    }
+                }
+            }
+            None => continue,
+        };
+        let mut name_series_split = match line_split.nth(0) {
+            Some(split) => split.split(" · "),
+            None => continue,
+        };
+        let series = match name_series_split.next() {
+            Some(series) => series.trim().to_string(),
+            None => continue,
+        };
+        let name = match name_series_split.next() {
+            Some(name) => {
+                let mut name_string = name.to_string();
+                match name_string.find("** (") {
+                    Some(i) => {
+                        name_string.drain(i..);
+                    }
+                    None => {}
+                }
+                name_string.remove_matches("**");
+                name_string
+            }
+            None => continue,
+        };
+        let card = Character {
+            wishlist: Some(wishlist),
+            name,
+            series,
+            last_update_ts: 0,
+        };
+        trace!("Parsed card: {:?}", card);
+        cards.push(card);
+    }
+    cards
 }

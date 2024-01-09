@@ -70,9 +70,35 @@ impl EventHandler for Handler {
             constants::QINGQUE_ID => {
                 parse_qingque_event(&ctx, event).await.unwrap();
             }
+            constants::CALF_ID => {
+                parse_calf_event(&ctx, event).await.unwrap();
+            }
             _ => {}
         }
     }
+}
+
+async fn parse_calf_event(ctx: &Context, event: MessageUpdateEvent) -> Result<(), String> {
+    if event.content.is_none() {
+        return Ok(());
+    }
+    let content = event.content.unwrap();
+    if content.contains("Apricot v6 Drop Analysis Engine") {
+        let cards = utils::katana::parse_cards_from_calf_analysis(&content);
+        if cards.len() == 0 {
+            return Ok(());
+        }
+        debug!("Importing cards from Calf Analysis");
+        match database::katana::write_characters(cards).await {
+            Ok(_) => {
+                debug!("Imported successully");
+            }
+            Err(why) => {
+                error!("Failed to import card: {:?}", why);
+            }
+        }
+    }
+    Ok(())
 }
 
 async fn parse_qingque_event(ctx: &Context, event: MessageUpdateEvent) -> Result<(), String> {
@@ -320,10 +346,12 @@ async fn debug(ctx: &Context, msg: &Message) -> CommandResult {
         "kdropanalyze" => debug::dbg_kdropanalyze(ctx, msg).await?,
         "kda" => debug::dbg_kdropanalyze(ctx, msg).await?,
         "embed" => debug::dbg_embed(ctx, msg).await?,
+        "message" => debug::dbg_message(ctx, msg).await?,
         "parse-qingque-atopwl" => debug::dbg_parse_qingque_atopwl(ctx, msg).await?,
         "parse-katana-kc_ow" => debug::dbg_parse_katana_kc_ow(ctx, msg).await?,
         "parse-katana-klu_lookup" => debug::dbg_parse_katana_klu_lookup(ctx, msg).await?,
         "parse-katana-klu_results" => debug::dbg_parse_katana_klu_results(ctx, msg).await?,
+        "parse-calf-analysis" => debug::dbg_parse_calf_analysis(ctx, msg).await?,
         _ => {
             helper::error_message(
                 ctx,

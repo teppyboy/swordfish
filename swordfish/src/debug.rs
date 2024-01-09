@@ -254,6 +254,51 @@ pub async fn dbg_parse_katana_klu_lookup(ctx: &Context, msg: &Message) -> Comman
     Ok(())
 }
 
+pub async fn dbg_parse_calf_analysis(ctx: &Context, msg: &Message) -> CommandResult {
+    let target_msg = match dbg_get_message("embed", ctx, msg).await {
+        Ok(msg) => msg,
+        Err(_) => {
+            return Ok(());
+        }
+    };
+    let cards = utils::katana::parse_cards_from_calf_analysis(&target_msg.content);
+    helper::info_message(
+        ctx,
+        msg,
+        format!("Parsed cards: ```\n{:?}\n```", cards),
+        None,
+    )
+    .await;
+    Ok(())
+}
+
+pub async fn dbg_message(ctx: &Context, msg: &Message) -> CommandResult {
+    let target_msg = match dbg_get_message("message", ctx, msg).await {
+        Ok(msg) => msg,
+        Err(_) => {
+            return Ok(());
+        }
+    };
+    let content = match target_msg.content.len() {
+        0 => "None".to_string(),
+        _ => target_msg.content,
+    };
+    helper::info_message(
+        ctx,
+        msg,
+        format!(
+            "Content: \n\
+    ```\n\
+    {}\n\
+    ```",
+            content
+        ),
+        Some("Message information".to_string()),
+    )
+    .await;
+    Ok(())
+}
+
 pub async fn dbg_embed(ctx: &Context, msg: &Message) -> CommandResult {
     let target_msg = match dbg_get_message("embed", ctx, msg).await {
         Ok(msg) => msg,
