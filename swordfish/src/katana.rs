@@ -19,7 +19,7 @@ const CARD_NAME_Y_OFFSET: u32 = 28;
 const CARD_NAME_WIDTH: u32 = 202 - CARD_NAME_X_OFFSET;
 const CARD_NAME_HEIGHT: u32 = 70 - CARD_NAME_Y_OFFSET;
 const CARD_SERIES_X_OFFSET: u32 = 22;
-const CARD_SERIES_Y_OFFSET: u32 = 276;
+const CARD_SERIES_Y_OFFSET: u32 = 278;
 const CARD_SERIES_WIDTH: u32 = 204 - CARD_SERIES_X_OFFSET;
 const CARD_SERIES_HEIGHT: u32 = 330 - CARD_SERIES_Y_OFFSET;
 
@@ -44,9 +44,6 @@ fn fix_tesseract_string(text: &mut String) {
     trace!("Text: {}", text);
     if text.ends_with("\nN") {
         text.truncate(text.len() - 2);
-        for _ in 0..2 {
-            text.pop();
-        }
     }
     // Replace first (to prevent "byte index 13 is not a char boundary; it is inside '—' (bytes 11..14)")
     while replace_string(text, "—", "-") {
