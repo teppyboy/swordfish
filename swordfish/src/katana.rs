@@ -189,6 +189,8 @@ fn regexify_text(text: &String) -> String {
             if prev_char.is_numeric() && prev_prev_char.is_whitespace() {
                 continue;
             }
+        } else if ['R'].contains(&c) {
+            ascii_text.push_str("[Rk]");
         } else if c.is_ascii_alphanumeric() {
             ascii_text.push(c);
         } else {
