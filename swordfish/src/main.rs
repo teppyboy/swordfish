@@ -321,9 +321,6 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 async fn debug(ctx: &Context, msg: &Message) -> CommandResult {
     let config = CONFIG.get().unwrap();
-    if !["debug", "trace"].contains(&config.log.level.as_str()) {
-        return Ok(());
-    }
     if !config.debug.allowed_users.contains(&msg.author.id.get()) {
         return Ok(());
     }
