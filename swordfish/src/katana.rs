@@ -13,7 +13,7 @@ use swordfish_common::{error, trace, warn};
 use tokio::task;
 use tokio::time::Instant;
 
-const ALLOWED_CHARS: [char; 11] = [' ', '-', '.', '!', ':', '(', ')', '\'', '/', '\'', '@'];
+const ALLOWED_CHARS: [char; 12] = [' ', '-', '.', '!', ':', '(', ')', '\'', '/', '\'', '@', '&'];
 const CARD_NAME_X_OFFSET: u32 = 22;
 const CARD_NAME_Y_OFFSET: u32 = 28;
 const CARD_NAME_WIDTH: u32 = 202 - CARD_NAME_X_OFFSET;
@@ -167,19 +167,41 @@ fn fix_tesseract_string(text: &mut String) {
 fn regexify_text(text: &String) -> String {
     let mut regex = String::new();
     let mut ascii_text = String::new();
+    let mut prev_chars: Vec<char> = Vec::new();
     for c in text.chars() {
         // Here comes the workaround...
         // The character "0" is sometimes used in place of "O" in names
         if ['0', 'O'].contains(&c) {
             ascii_text.push_str("[0O]");
+        } else if ['u', 'v'].contains(&c) && prev_chars.len() > 0 {
+            let prev_char = prev_chars[prev_chars.len() - 1];
+            if ['u', 'v'].contains(&prev_char) {
+                ascii_text.pop();
+                ascii_text.push_str("[uv][uv]");
+            } else {
+                ascii_text.push(c);
+            }
+        } else if ['t'].contains(&c) {
+            ascii_text.push_str("[ti]");
+        } else if ['.'].contains(&c) {
+            let prev_char = prev_chars[prev_chars.len() - 1];
+            let prev_prev_char = prev_chars[prev_chars.len() - 2];
+            if prev_char.is_numeric() && prev_prev_char.is_whitespace() {
+                continue;
+            }
         } else if c.is_ascii_alphanumeric() {
             ascii_text.push(c);
         } else {
             ascii_text.push(' ');
         }
+        prev_chars.push(c);
     }
-    for word in ascii_text.split_whitespace() {
-        if word.len() < 2 && regex.len() > 0 {
+    let split = ascii_text.split_whitespace();
+    let len = split.clone().count();
+    for (i, word) in split.enumerate() {
+        if word.len() < 2 && i > 0 && i < len - 1
+            || (word.len() == 1 && word.to_ascii_uppercase() == word)
+        {
             continue;
         }
         regex.push_str("(?=.*\\b");
