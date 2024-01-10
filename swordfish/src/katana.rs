@@ -13,7 +13,7 @@ use swordfish_common::{error, trace, warn};
 use tokio::task;
 use tokio::time::Instant;
 
-const ALLOWED_CHARS: [char; 10] = [' ', '-', '.', '!', ':', '(', ')', '\'', '/', '\''];
+const ALLOWED_CHARS: [char; 11] = [' ', '-', '.', '!', ':', '(', ')', '\'', '/', '\'', '@'];
 const CARD_NAME_X_OFFSET: u32 = 22;
 const CARD_NAME_Y_OFFSET: u32 = 28;
 const CARD_NAME_WIDTH: u32 = 202 - CARD_NAME_X_OFFSET;
@@ -71,9 +71,7 @@ fn fix_tesseract_string(text: &mut String) {
     // This is usually the left bottom corner of the card
     trace!("Text: {}", text);
     if text.ends_with(r##"“NO"##) {
-        for _ in 0..3 {
-            text.pop();
-        }
+        text.drain(text.len() - 4..text.len());
     }
     // Workaround for "\n." (and others in the future)
     let text_clone = text.clone();
@@ -101,8 +99,7 @@ fn fix_tesseract_string(text: &mut String) {
             trace!("Prev prev char: {}", prev_prev_char);
             if prev_prev_char == 'o' {
                 rm_prev = -1;
-                text.remove(i - 2);
-                text.remove(i - 2);
+                text.drain(i - 3..i - 1);
                 text.insert_str(i - 2, "yo!")
             }
         }
@@ -165,6 +162,30 @@ fn fix_tesseract_string(text: &mut String) {
         text.pop();
     }
     trace!("Text (final): {}", text);
+}
+
+fn regexify_text(text: &String) -> String {
+    let mut regex = String::new();
+    let mut ascii_text = String::new();
+    for c in text.chars() {
+        // Here comes the workaround...
+        // The character "0" is sometimes used in place of "O" in names
+        if ['0', 'O'].contains(&c) {
+            ascii_text.push_str("[0O]");
+        } else if c.is_ascii_alphanumeric() {
+            ascii_text.push(c);
+        } else {
+            ascii_text.push(' ');
+        }
+    }
+    ascii_text.split_whitespace().for_each(|word| {
+        regex.push_str("(?=.*\\b");
+        regex.push_str(word.to_lowercase().as_str());
+        regex.push_str("\\b)");
+    });
+    regex.push_str(".+");
+    trace!("Regex: {}", regex);
+    regex
 }
 
 fn save_image_if_trace(img: &DynamicImage, path: &str) {
@@ -282,7 +303,12 @@ pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) ->
         Some(c) => {
             character = c;
         }
-        None => match db::query_character_regex(&character.name, &character.series).await {
+        None => match db::query_character_regex(
+            &regexify_text(&character.name),
+            &regexify_text(&character.series),
+        )
+        .await
+        {
             Some(c) => {
                 character = c;
             }
@@ -349,7 +375,12 @@ pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> D
         Some(c) => {
             character = c;
         }
-        None => match db::query_character_regex(&character.name, &character.series).await {
+        None => match db::query_character_regex(
+            &regexify_text(&character.name),
+            &regexify_text(&character.series),
+        )
+        .await
+        {
             Some(c) => {
                 character = c;
             }
