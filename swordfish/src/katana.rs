@@ -178,11 +178,14 @@ fn regexify_text(text: &String) -> String {
             ascii_text.push(' ');
         }
     }
-    ascii_text.split_whitespace().for_each(|word| {
+    for word in ascii_text.split_whitespace() {
+        if word.len() < 2 && regex.len() > 0 {
+            continue;
+        }
         regex.push_str("(?=.*\\b");
         regex.push_str(word.to_lowercase().as_str());
         regex.push_str("\\b)");
-    });
+    }
     regex.push_str(".+");
     trace!("Regex: {}", regex);
     regex
