@@ -184,10 +184,12 @@ fn regexify_text(text: &String) -> String {
         } else if ['t'].contains(&c) {
             ascii_text.push_str("[ti]");
         } else if ['.'].contains(&c) {
-            let prev_char = prev_chars[prev_chars.len() - 1];
-            let prev_prev_char = prev_chars[prev_chars.len() - 2];
-            if prev_char.is_numeric() && prev_prev_char.is_whitespace() {
-                continue;
+            if prev_chars.len() > 3 {
+                let prev_char = prev_chars[prev_chars.len() - 1];
+                let prev_prev_char = prev_chars[prev_chars.len() - 2];
+                if prev_char.is_numeric() && prev_prev_char.is_whitespace() {
+                    continue;
+                }
             }
         } else if ['R'].contains(&c) {
             ascii_text.push_str("[Rk]");
@@ -255,7 +257,10 @@ fn image_with_white_padding(im: DynamicImage) -> DynamicImage {
     new_im
 }
 
-pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) -> DroppedCard {
+pub async fn analyze_card_libtesseract(
+    card: image::DynamicImage,
+    count: u32,
+) -> Result<DroppedCard, String> {
     trace!("Spawning threads for analyzing card...");
     // Read the name and the series
     let card_clone = card.clone();
@@ -314,9 +319,19 @@ pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) ->
         fix_tesseract_string(&mut series_str);
         series_str
     });
-    let name = name_thread.await.unwrap();
+    let name = match name_thread.await {
+        Ok(name) => name,
+        Err(why) => {
+            return Err(format!("Failed to read name: {:?}", why));
+        }
+    };
     trace!("Name: {}", name);
-    let series = series_thread.await.unwrap();
+    let series = match series_thread.await {
+        Ok(series) => series,
+        Err(why) => {
+            return Err(format!("Failed to read series: {:?}", why));
+        }
+    };
     trace!("Series: {}", series);
     // TODO: Read the print number
     let mut character = Character {
@@ -342,14 +357,17 @@ pub async fn analyze_card_libtesseract(card: image::DynamicImage, count: u32) ->
             None => {}
         },
     }
-    DroppedCard {
+    Ok(DroppedCard {
         character,
         print: 0,
         edition: 0,
-    }
+    })
 }
 
-pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> DroppedCard {
+pub async fn analyze_card_subprocess(
+    card: image::DynamicImage,
+    count: u32,
+) -> Result<DroppedCard, String> {
     trace!("Spawning threads for analyzing card...");
     // Read the name and the series
     let card_clone = card.clone();
@@ -386,10 +404,19 @@ pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> D
         fix_tesseract_string(&mut series_str);
         series_str
     });
-    let name = name_thread.await.unwrap();
+    let name = match name_thread.await {
+        Ok(name) => name,
+        Err(why) => {
+            return Err(format!("Failed to read name: {:?}", why));
+        }
+    };
     trace!("Name: {}", name);
-    let series = series_thread.await.unwrap();
-    trace!("Series: {}", series);
+    let series = match series_thread.await {
+        Ok(series) => series,
+        Err(why) => {
+            return Err(format!("Failed to read series: {:?}", why));
+        }
+    };
     // TODO: Read the print number
     let mut character = Character {
         wishlist: None,
@@ -414,14 +441,14 @@ pub async fn analyze_card_subprocess(card: image::DynamicImage, count: u32) -> D
             None => {}
         },
     }
-    DroppedCard {
+    Ok(DroppedCard {
         character,
         print: 0,
         edition: 0,
-    }
+    })
 }
 
-async fn execute_analyze_drop(image: DynamicImage, count: u32) -> DroppedCard {
+async fn execute_analyze_drop(image: DynamicImage, count: u32) -> Result<DroppedCard, String> {
     let config = CONFIG.get().unwrap();
     match config.tesseract.backend.as_str() {
         "libtesseract" => analyze_card_libtesseract(image, count).await,
