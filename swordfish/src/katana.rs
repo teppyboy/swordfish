@@ -501,7 +501,7 @@ pub async fn analyze_drop_message(message: &Message) -> Result<Vec<DroppedCard>,
             Ok((i, execute_analyze_drop(card_img, i).await))
         });
     }
-    let mut handles: Vec<task::JoinHandle<Result<(u32, Result<DroppedCard>), String>>> = Vec::new();
+    let mut handles: Vec<task::JoinHandle<Result<(u32, Result<DroppedCard, String>), String>>> = Vec::new();
     for job in jobs {
         let handle = task::spawn(job);
         handles.push(handle);
