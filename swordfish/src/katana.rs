@@ -501,7 +501,7 @@ pub async fn analyze_drop_message(message: &Message) -> Result<Vec<DroppedCard>,
             Ok((i, execute_analyze_drop(card_img, i).await))
         });
     }
-    let mut handles: Vec<task::JoinHandle<Result<(u32, DroppedCard), String>>> = Vec::new();
+    let mut handles: Vec<task::JoinHandle<Result<(u32, Result<DroppedCard>), String>>> = Vec::new();
     for job in jobs {
         let handle = task::spawn(job);
         handles.push(handle);
@@ -511,7 +511,11 @@ pub async fn analyze_drop_message(message: &Message) -> Result<Vec<DroppedCard>,
         match result {
             Ok(result) => {
                 match result {
-                    Ok((i, card)) => {
+                    Ok((i, card_result)) => {
+                        let card = match card_result {
+                            Ok(card) => card,
+                            Err(why) => return Err(format!("Failed to analyze card: {}", why)),
+                        };
                         trace!("Finished analyzing card {}", i);
                         cards.push(card);
                     }
