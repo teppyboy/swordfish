@@ -4,6 +4,7 @@ use serenity::all::{Embed, MessageUpdateEvent};
 use serenity::async_trait;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{CommandResult, Configuration, StandardFramework};
+use serenity::gateway::ActivityData;
 use serenity::model::channel::Message;
 use serenity::prelude::*;
 use std::env;
@@ -289,12 +290,13 @@ async fn main() {
     let mut client = Client::builder(token, intents)
         .event_handler(Handler)
         .framework(framework)
+        .activity(ActivityData::playing("with Seele"))
         .await
         .expect("Error creating client");
 
     info!("Starting client...");
     // start listening for events by starting a single shard
-    if let Err(why) = client.start().await {
+    if let Err(why) = client.start_autosharded().await {
         eprintln!("An error occurred while running the client: {:?}", why);
     }
 }
