@@ -19,6 +19,10 @@ jobs:
       run: |
         sudo add-apt-repository ppa:alex-p/tesseract-ocr-devel -y
         sudo apt install -y tesseract-ocr libtesseract-dev
+    - name: Install Rust Nightly
+      run: |
+        rustup toolchain install nightly
+        rustup default nightly
     - uses: actions/checkout@v3
     - name: Build
       run: cargo build --verbose
