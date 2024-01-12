@@ -1,6 +1,5 @@
 use std::process::Command;
 
-
 // Example custom build script.
 fn main() {
     // Get the git commit hash (short)

@@ -222,8 +222,15 @@ fn regexify_text(text: &String) -> String {
         }
         regex.push_str("(?=.*\\b");
         let processed_word = word.to_lowercase();
-        if partial_match && processed_word.len() > 2 {
-            regex.push_str(&processed_word[2..(word.len() - 2)]);
+        if partial_match && processed_word.len() > 3 {
+            if !processed_word[0..3].contains(|c: char| ['[', ']'].contains(&c))
+                && !processed_word[word.len() - 3..word.len() - 1]
+                    .contains(|c: char| ['[', ']'].contains(&c))
+            {
+                regex.push_str(&processed_word[2..word.len() - 2]);
+            } else {
+                regex.push_str(&processed_word.as_str());
+            }
         } else {
             regex.push_str(&processed_word.as_str());
         }
