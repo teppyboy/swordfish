@@ -13,14 +13,16 @@ use swordfish_common::{error, trace, warn};
 use tokio::task;
 use tokio::time::Instant;
 
-const ALLOWED_CHARS: [char; 12] = [' ', '-', '.', '!', ':', '(', ')', '\'', '/', '\'', '@', '&'];
+const ALLOWED_CHARS: [char; 13] = [
+    ' ', '-', '.', '!', ':', '(', ')', '\'', '/', '\'', '@', '&', '_',
+];
 const CARD_NAME_X_OFFSET: u32 = 22;
 const CARD_NAME_Y_OFFSET: u32 = 28;
 const CARD_NAME_WIDTH: u32 = 202 - CARD_NAME_X_OFFSET;
 const CARD_NAME_HEIGHT: u32 = 70 - CARD_NAME_Y_OFFSET;
 const CARD_SERIES_X_OFFSET: u32 = 22;
 const CARD_SERIES_Y_OFFSET: u32 = 278;
-const CARD_SERIES_WIDTH: u32 = 204 - CARD_SERIES_X_OFFSET;
+const CARD_SERIES_WIDTH: u32 = 206 - CARD_SERIES_X_OFFSET;
 const CARD_SERIES_HEIGHT: u32 = 330 - CARD_SERIES_Y_OFFSET;
 
 fn replace_string(text: &mut String, from: &str, to: &str) -> bool {
@@ -165,6 +167,12 @@ fn fix_tesseract_string(text: &mut String) {
 }
 
 fn regexify_text(text: &String) -> String {
+    let partial_match: bool;
+    if text.len() > 23 {
+        partial_match = true;
+    } else {
+        partial_match = false;
+    }
     let mut regex = String::new();
     let mut ascii_text = String::new();
     let mut prev_chars: Vec<char> = Vec::new();
@@ -183,6 +191,8 @@ fn regexify_text(text: &String) -> String {
             }
         } else if ['t'].contains(&c) {
             ascii_text.push_str("[ti]");
+        } else if ['I', 'l', '!', '1'].contains(&c) {
+            ascii_text.push_str("[Il!1i]");
         } else if ['.'].contains(&c) {
             if prev_chars.len() > 3 {
                 let prev_char = prev_chars[prev_chars.len() - 1];
@@ -191,6 +201,7 @@ fn regexify_text(text: &String) -> String {
                     continue;
                 }
             }
+            ascii_text.push(' ');
         } else if ['R'].contains(&c) {
             ascii_text.push_str("[Rk]");
         } else if c.is_ascii_alphanumeric() {
@@ -202,6 +213,7 @@ fn regexify_text(text: &String) -> String {
     }
     let split = ascii_text.split_whitespace();
     let len = split.clone().count();
+    trace!("Partial match: {}", partial_match);
     for (i, word) in split.enumerate() {
         if word.len() < 2 && i > 0 && i < len - 1
             || (word.len() == 1 && word.to_ascii_uppercase() == word)
@@ -209,7 +221,12 @@ fn regexify_text(text: &String) -> String {
             continue;
         }
         regex.push_str("(?=.*\\b");
-        regex.push_str(word.to_lowercase().as_str());
+        let processed_word = word.to_lowercase();
+        if partial_match && processed_word.len() > 2 {
+            regex.push_str(&processed_word[2..(word.len() - 2)]);
+        } else {
+            regex.push_str(&processed_word.as_str());
+        }
         regex.push_str("\\b)");
     }
     regex.push_str(".+");
@@ -501,7 +518,8 @@ pub async fn analyze_drop_message(message: &Message) -> Result<Vec<DroppedCard>,
             Ok((i, execute_analyze_drop(card_img, i).await))
         });
     }
-    let mut handles: Vec<task::JoinHandle<Result<(u32, Result<DroppedCard, String>), String>>> = Vec::new();
+    let mut handles: Vec<task::JoinHandle<Result<(u32, Result<DroppedCard, String>), String>>> =
+        Vec::new();
     for job in jobs {
         let handle = task::spawn(job);
         handles.push(handle);
