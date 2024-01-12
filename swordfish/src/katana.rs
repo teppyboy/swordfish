@@ -224,7 +224,7 @@ fn regexify_text(text: &String) -> String {
         let processed_word = word.to_lowercase();
         if partial_match && processed_word.len() > 3 {
             if !processed_word[0..3].contains(|c: char| ['[', ']'].contains(&c))
-                && !processed_word[word.len() - 3..word.len() - 1]
+                && !processed_word[word.len() - 2..word.len()]
                     .contains(|c: char| ['[', ']'].contains(&c))
             {
                 regex.push_str(&processed_word[2..word.len() - 2]);
