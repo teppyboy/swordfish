@@ -368,11 +368,12 @@ async fn debug(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 async fn info(ctx: &Context, msg: &Message) -> CommandResult {
     let reply_str = format!(
-        "Swordfish v{} - {}\n\
+        "Swordfish v{} ({}) - {}\n\
         Log level: `{}`\n\
         Build type: `{}`\n\n\
         Like my work? Consider supporting me at my [Ko-fi](https://ko-fi.com/tretrauit) or [Patreon](https://patreon.com/tretrauit)!",
         env!("CARGO_PKG_VERSION"),
+        env!("GIT_HASH"),
         GITHUB_URL,
         CONFIG.get().unwrap().log.level.clone().as_str(),
         env!("BUILD_PROFILE"),
