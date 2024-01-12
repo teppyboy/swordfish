@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Install Tesseract 5
+      run: |
+        sudo add-apt-repository ppa:alex-p/tesseract-ocr-devel -y
+        sudo apt install -y tesseract-ocr libtesseract-dev
     - uses: actions/checkout@v3
     - name: Build
       run: cargo build --verbose
