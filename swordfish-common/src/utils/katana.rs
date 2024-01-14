@@ -270,6 +270,9 @@ pub fn parse_cards_from_calf_analysis(content: &String) -> Vec<Character> {
                 let mut wl_string = wishlist_str.to_string();
                 // Remove ♡
                 wl_string.remove(0);
+                if wl_string.starts_with('?') {
+                    continue;
+                }
                 // Remove "," in the number
                 // I don't know, I've never seen this myself.
                 wl_string.remove_matches(",");
