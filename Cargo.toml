@@ -5,3 +5,16 @@ members = [
     "swordfish"
 , "swordfish-user"]
 default-members = ["swordfish"]
+
+[profile.release]
+opt-level = 3
+debug = false
+split-debuginfo = '...'  # Platform-specific.
+strip = "symbols"
+debug-assertions = false
+overflow-checks = false
+lto = "thin"
+panic = 'unwind'
+incremental = false
+codegen-units = 16
+rpath = false

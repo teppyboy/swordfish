@@ -13,8 +13,8 @@ use swordfish_common::{error, trace, warn};
 use tokio::task;
 use tokio::time::Instant;
 
-const ALLOWED_CHARS: [char; 13] = [
-    ' ', '-', '.', '!', ':', '(', ')', '\'', '/', '\'', '@', '&', '_',
+const ALLOWED_CHARS: [char; 14] = [
+    ' ', '-', '.', '!', ':', '(', ')', '\'', '/', '\'', '@', '&', '_', 'é',
 ];
 const CARD_NAME_X_OFFSET: u32 = 22;
 const CARD_NAME_Y_OFFSET: u32 = 28;
@@ -168,10 +168,14 @@ fn fix_tesseract_string(text: &mut String) {
 
 fn regexify_text(text: &String) -> String {
     let partial_match: bool;
+    let short_text = text.len() < 6;
     if text.len() > 23 {
         partial_match = true;
     } else {
         partial_match = false;
+    }
+    if short_text {
+
     }
     let mut regex = String::new();
     let mut ascii_text = String::new();
@@ -204,12 +208,51 @@ fn regexify_text(text: &String) -> String {
             ascii_text.push(' ');
         } else if ['R'].contains(&c) {
             ascii_text.push_str("[Rk]");
+        } else if ['m'].contains(&c) {
+            ascii_text.push_str("(m|ra)");
         } else if c.is_ascii_alphanumeric() {
             ascii_text.push(c);
         } else {
             ascii_text.push(' ');
         }
         prev_chars.push(c);
+    }
+    // Filter for short string.
+    if short_text && !ascii_text.contains(|c: char| c.is_whitespace()) {
+        regex.push_str("^");
+        let mut request_quantifier: bool = false;
+        let mut regex_any: bool = false;
+        let mut regex_any_from: usize = 0;
+        for (i, char) in ascii_text.chars().enumerate() {
+            trace!("Char: {}", char);
+            if char == '[' {
+                regex_any = true;
+                regex_any_from = i;
+                if i == 0 {
+                    request_quantifier = true;
+                }
+                continue;
+            } else if i == ascii_text.len() - 1 {
+                regex.push_str(".*");
+            }
+            if regex_any {
+                if char == ']' {
+                    regex_any = false;
+                    regex.push_str(&ascii_text[regex_any_from..i + 1]);
+                    if request_quantifier {
+                        regex.push_str(".*");
+                    }
+                }
+                continue;
+            }
+            regex.push(char);
+            if i == 0 {
+                regex.push_str(".*");
+            }
+        }
+        regex.push_str("$");
+        trace!("Regex (short string): {}", regex);
+        return regex;
     }
     let split = ascii_text.split_whitespace();
     let len = split.clone().count();
@@ -220,21 +263,21 @@ fn regexify_text(text: &String) -> String {
         {
             continue;
         }
-        regex.push_str("(?=.*\\b");
+        regex.push_str("(?=.*");
         let processed_word = word.to_lowercase();
         if partial_match && processed_word.len() > 4 {
             if !processed_word[0..3].contains(|c: char| ['[', ']'].contains(&c))
                 && !processed_word[word.len() - 2..word.len()]
                     .contains(|c: char| ['[', ']'].contains(&c))
             {
-                regex.push_str(format!("[a-z0-9][a-z0-9]{}[a-z0-9][a-z0-9]", &processed_word[2..word.len() - 2]).as_str());
+                regex.push_str(&processed_word[2..word.len() - 2]);
             } else {
                 regex.push_str(&processed_word.as_str());
             }
         } else {
-            regex.push_str(&processed_word.as_str());
+            regex.push_str(format!("\\b{}\\b", &processed_word.as_str()).as_str());
         }
-        regex.push_str("\\b)");
+        regex.push_str(")");
     }
     regex.push_str(".+");
     trace!("Regex: {}", regex);

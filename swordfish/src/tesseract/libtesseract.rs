@@ -1,5 +1,8 @@
 pub use leptess::{LepTess, Variable};
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    thread,
+};
 use tokio::task;
 
 static mut TESSERACT_VEC: Vec<Arc<Mutex<LepTess>>> = Vec::new();
@@ -66,19 +69,17 @@ pub fn create_tesseract(numeric_only: bool) -> Result<LepTess, String> {
 /// Because this function creates a new thread, it should only be called once.
 ///
 pub async fn init() {
-    task::spawn(async {
-        loop {
-            unsafe {
-                if TESSERACT_VEC.len() < 9 {
-                    let ocr = create_tesseract(false).unwrap();
-                    TESSERACT_VEC.push(Arc::new(Mutex::new(ocr)));
-                }
-                if TESSERACT_NUMERIC_VEC.len() < 9 {
-                    let ocr = create_tesseract(true).unwrap();
-                    TESSERACT_NUMERIC_VEC.push(Arc::new(Mutex::new(ocr)));
-                }
+    task::spawn_blocking(|| loop {
+        unsafe {
+            if TESSERACT_VEC.len() < 9 {
+                let ocr = create_tesseract(false).unwrap();
+                TESSERACT_VEC.push(Arc::new(Mutex::new(ocr)));
             }
-            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            if TESSERACT_NUMERIC_VEC.len() < 9 {
+                let ocr = create_tesseract(true).unwrap();
+                TESSERACT_NUMERIC_VEC.push(Arc::new(Mutex::new(ocr)));
+            }
         }
+        thread::sleep(tokio::time::Duration::from_millis(500));
     });
 }
