@@ -16,6 +16,7 @@ use tokio::time::Instant;
 const ALLOWED_CHARS: [char; 14] = [
     ' ', '-', '.', '!', ':', '(', ')', '\'', '/', '\'', '@', '&', '_', 'é',
 ];
+const REGEX_CHARS: [char; 4] = ['[', ']', ')', '('];
 const CARD_NAME_X_OFFSET: u32 = 22;
 const CARD_NAME_Y_OFFSET: u32 = 28;
 const CARD_NAME_WIDTH: u32 = 202 - CARD_NAME_X_OFFSET;
@@ -266,9 +267,9 @@ fn regexify_text(text: &String) -> String {
         regex.push_str("(?=.*");
         let processed_word = word.to_lowercase();
         if partial_match && processed_word.len() > 4 {
-            if !processed_word[0..3].contains(|c: char| ['[', ']'].contains(&c))
+            if !processed_word[0..3].contains(|c: char| REGEX_CHARS.contains(&c))
                 && !processed_word[word.len() - 2..word.len()]
-                    .contains(|c: char| ['[', ']'].contains(&c))
+                    .contains(|c: char| REGEX_CHARS.contains(&c))
             {
                 regex.push_str(&processed_word[2..word.len() - 2]);
             } else {
