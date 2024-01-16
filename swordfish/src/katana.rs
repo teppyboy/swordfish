@@ -257,6 +257,7 @@ fn regexify_text(text: &String) -> String {
         }
         regex.push_str("(?=.*");
         let processed_word = word.to_lowercase();
+        trace!("Processed word: {}", processed_word);
         if partial_match && processed_word.len() > 4 {
             // Remove first two and last two characters for "partial match"
             if !processed_word[0..3].contains(|c: char| REGEX_CHARS.contains(&c))
@@ -269,7 +270,7 @@ fn regexify_text(text: &String) -> String {
             }
         } else {
             // Do not push word boundary if the word contains special characters like "!"
-            if processed_word.contains(|c: char| c.is_alphanumeric()) {
+            if processed_word.contains(|c: char| c.is_ascii_alphanumeric()) {
                 regex.push_str(format!("\\b{}\\b", &processed_word.as_str()).as_str());
             } else {
                 regex.push_str(format!("{}", &processed_word.as_str()).as_str());
