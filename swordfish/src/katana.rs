@@ -175,9 +175,6 @@ fn regexify_text(text: &String) -> String {
     } else {
         partial_match = false;
     }
-    if short_text {
-
-    }
     let mut regex = String::new();
     let mut ascii_text = String::new();
     let mut prev_chars: Vec<char> = Vec::new();
@@ -186,14 +183,8 @@ fn regexify_text(text: &String) -> String {
         // The character "0" is sometimes used in place of "O" in names
         if ['0', 'O'].contains(&c) {
             ascii_text.push_str("[0O]");
-        } else if ['u', 'v'].contains(&c) && prev_chars.len() > 0 {
-            let prev_char = prev_chars[prev_chars.len() - 1];
-            if ['u', 'v'].contains(&prev_char) {
-                ascii_text.pop();
-                ascii_text.push_str("[uv][uv]");
-            } else {
-                ascii_text.push(c);
-            }
+        } else if ['u', 'v'].contains(&c) {
+            ascii_text.push_str("[uv]");
         } else if ['t'].contains(&c) {
             ascii_text.push_str("[ti]");
         } else if ['I', 'l', '!', '1'].contains(&c) {
@@ -267,6 +258,7 @@ fn regexify_text(text: &String) -> String {
         regex.push_str("(?=.*");
         let processed_word = word.to_lowercase();
         if partial_match && processed_word.len() > 4 {
+            // Remove first two and last two characters for "partial match"
             if !processed_word[0..3].contains(|c: char| REGEX_CHARS.contains(&c))
                 && !processed_word[word.len() - 2..word.len()]
                     .contains(|c: char| REGEX_CHARS.contains(&c))
@@ -276,7 +268,12 @@ fn regexify_text(text: &String) -> String {
                 regex.push_str(&processed_word.as_str());
             }
         } else {
-            regex.push_str(format!("\\b{}\\b", &processed_word.as_str()).as_str());
+            // Do not push word boundary if the word contains special characters like "!"
+            if processed_word.contains(|c: char| c.is_alphanumeric()) {
+                regex.push_str(format!("\\b{}\\b", &processed_word.as_str()).as_str());
+            } else {
+                regex.push_str(format!("{}", &processed_word.as_str()).as_str());
+            }
         }
         regex.push_str(")");
     }
