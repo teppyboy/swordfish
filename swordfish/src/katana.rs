@@ -250,10 +250,13 @@ fn regexify_text(text: &String) -> String {
     let len = split.clone().count();
     trace!("Partial match: {}", partial_match);
     for (i, word) in split.enumerate() {
-        if word.len() < 2 && i > 0 && i < len - 1
-            || (word.len() == 1 && word.to_ascii_uppercase() == word)
-        {
-            continue;
+        if word.len() < 2 {
+            if i > 0 && i < len - 1 {
+                continue;
+            }
+            if ["x", "X"].contains(&word) {
+                continue;
+            }
         }
         regex.push_str("(?=.*");
         let processed_word = word.to_lowercase();
