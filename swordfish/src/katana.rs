@@ -521,9 +521,9 @@ pub async fn analyze_card_subprocess(
 
 async fn execute_analyze_drop(image: DynamicImage, count: u32) -> Result<DroppedCard, String> {
     let config = CONFIG.get().unwrap();
-    match config.tesseract.backend {
-        String::from("libtesseract") => analyze_card_libtesseract(image, count).await,
-        String::from("subprocess") => analyze_card_subprocess(image, count).await,
+    match config.tesseract.backend.as_str() {
+        "libtesseract" => analyze_card_libtesseract(image, count).await,
+        "subprocess" => analyze_card_subprocess(image, count).await,
         _ => {
             panic!("Invalid Tesseract backend: {}", config.tesseract.backend);
         }
