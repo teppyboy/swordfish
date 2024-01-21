@@ -202,6 +202,8 @@ fn regexify_text(text: &String) -> String {
             ascii_text.push_str("[Rk]");
         } else if ['m'].contains(&c) {
             ascii_text.push_str("(m|ra)");
+        } else if ['a'].contains(&c) {
+            ascii_text.push_str("[ao]")
         } else if c.is_ascii_alphanumeric() {
             ascii_text.push(c);
         } else {
@@ -519,9 +521,9 @@ pub async fn analyze_card_subprocess(
 
 async fn execute_analyze_drop(image: DynamicImage, count: u32) -> Result<DroppedCard, String> {
     let config = CONFIG.get().unwrap();
-    match config.tesseract.backend.as_str() {
-        "libtesseract" => analyze_card_libtesseract(image, count).await,
-        "subprocess" => analyze_card_subprocess(image, count).await,
+    match config.tesseract.backend {
+        String::from("libtesseract") => analyze_card_libtesseract(image, count).await,
+        String::from("subprocess") => analyze_card_subprocess(image, count).await,
         _ => {
             panic!("Invalid Tesseract backend: {}", config.tesseract.backend);
         }
@@ -567,10 +569,10 @@ pub async fn analyze_drop_message(message: &Message) -> Result<Vec<DroppedCard>,
         save_image_if_trace(&card_img, &format!("debug/3-cropped-{}.png", i));
         jobs.push(async move {
             trace!("Analyzing card {}", i);
-            Ok((i, execute_analyze_drop(card_img, i).await))
+            (i, execute_analyze_drop(card_img, i).await)
         });
     }
-    let mut handles: Vec<task::JoinHandle<Result<(u32, Result<DroppedCard, String>), String>>> =
+    let mut handles: Vec<task::JoinHandle<(u32, Result<DroppedCard, String>)>> =
         Vec::new();
     for job in jobs {
         let handle = task::spawn(job);
@@ -579,18 +581,13 @@ pub async fn analyze_drop_message(message: &Message) -> Result<Vec<DroppedCard>,
     for handle in handles {
         let result = handle.await;
         match result {
-            Ok(result) => {
-                match result {
-                    Ok((i, card_result)) => {
-                        let card = match card_result {
-                            Ok(card) => card,
-                            Err(why) => return Err(format!("Failed to analyze card: {}", why)),
-                        };
-                        trace!("Finished analyzing card {}", i);
-                        cards.push(card);
-                    }
+            Ok((i, card_result)) => {
+                let card = match card_result {
+                    Ok(card) => card,
                     Err(why) => return Err(format!("Failed to analyze card: {}", why)),
                 };
+                trace!("Finished analyzing card {}", i);
+                cards.push(card);
             }
             Err(why) => return Err(format!("Failed to analyze card: {:?}", why)),
         };
