@@ -338,7 +338,14 @@ pub async fn analyze_card_libtesseract(
     let name_thread = task::spawn_blocking(move || {
         // let mut leptess =
         //     libtesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
-        let binding = unsafe { libtesseract::get_tesseract() };
+        let binding = unsafe {
+            match libtesseract::get_tesseract() {
+                Ok(b) => b,
+                Err(why) => {
+                    panic!("{}", format!("Failed to get Tesseract: {:?}", why));
+                }
+            }
+        };
         let mut leptess = binding.lock().unwrap();
         let name_img = image_with_white_padding(card_clone.crop_imm(
             CARD_NAME_X_OFFSET,
@@ -366,7 +373,14 @@ pub async fn analyze_card_libtesseract(
     let series_thread = task::spawn_blocking(move || {
         // let mut leptess =
         //     libtesseract::init_tesseract(false).expect("Failed to initialize Tesseract");
-        let binding = unsafe { libtesseract::get_tesseract() };
+        let binding = unsafe {
+            match libtesseract::get_tesseract() {
+                Ok(b) => b,
+                Err(why) => {
+                    panic!("{}", format!("Failed to get Tesseract: {:?}", why));
+                }
+            }
+        };
         let mut leptess = binding.lock().unwrap();
         let series_img = image_with_white_padding(card_clone.crop_imm(
             CARD_SERIES_X_OFFSET,
@@ -572,8 +586,7 @@ pub async fn analyze_drop_message(message: &Message) -> Result<Vec<DroppedCard>,
             (i, execute_analyze_drop(card_img, i).await)
         });
     }
-    let mut handles: Vec<task::JoinHandle<(u32, Result<DroppedCard, String>)>> =
-        Vec::new();
+    let mut handles: Vec<task::JoinHandle<(u32, Result<DroppedCard, String>)>> = Vec::new();
     for job in jobs {
         let handle = task::spawn(job);
         handles.push(handle);

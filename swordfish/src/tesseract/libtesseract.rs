@@ -1,21 +1,29 @@
 pub use leptess::{LepTess, Variable};
 use std::{
+    panic::catch_unwind,
     sync::{Arc, Mutex},
     thread,
 };
+use swordfish_common::error;
 use tokio::task;
 
 static mut TESSERACT_VEC: Vec<Arc<Mutex<LepTess>>> = Vec::new();
 static mut TESSERACT_NUMERIC_VEC: Vec<Arc<Mutex<LepTess>>> = Vec::new();
 
-pub unsafe fn get_tesseract() -> Arc<Mutex<LepTess>> {
+pub unsafe fn get_tesseract() -> Result<Arc<Mutex<LepTess>>, String> {
     let lep_tess: Arc<Mutex<LepTess>>;
     if TESSERACT_VEC.len() == 0 {
-        lep_tess = Arc::new(Mutex::new(create_tesseract(false).unwrap()));
+        let ocr = match create_tesseract(false) {
+            Ok(ocr) => ocr,
+            Err(why) => {
+                return Err(format!("Failed to create Tesseract: {:?}", why));
+            }
+        };
+        lep_tess = Arc::new(Mutex::new(ocr));
     } else {
         lep_tess = TESSERACT_VEC.pop().unwrap();
     }
-    lep_tess
+    Ok(lep_tess)
 }
 
 pub unsafe fn get_tesseract_numeric() -> Arc<Mutex<LepTess>> {
@@ -72,12 +80,38 @@ pub async fn init() {
     task::spawn_blocking(|| loop {
         unsafe {
             if TESSERACT_VEC.len() < 9 {
-                let ocr = create_tesseract(false).unwrap();
-                TESSERACT_VEC.push(Arc::new(Mutex::new(ocr)));
+                match catch_unwind(|| {
+                    let ocr = match create_tesseract(false) {
+                        Ok(ocr) => ocr,
+                        Err(why) => {
+                            error!("Failed to create Tesseract: {:?}", why);
+                            return;
+                        }
+                    };
+                    TESSERACT_VEC.push(Arc::new(Mutex::new(ocr)));
+                }) {
+                    Ok(_) => (),
+                    Err(why) => {
+                        error!("Failed to create Tesseract: {:?}", why);
+                    }
+                }
             }
             if TESSERACT_NUMERIC_VEC.len() < 9 {
-                let ocr = create_tesseract(true).unwrap();
-                TESSERACT_NUMERIC_VEC.push(Arc::new(Mutex::new(ocr)));
+                match catch_unwind(|| {
+                    let ocr = match create_tesseract(true) {
+                        Ok(ocr) => ocr,
+                        Err(why) => {
+                            error!("Failed to create Tesseract: {:?}", why);
+                            return;
+                        }
+                    };
+                    TESSERACT_NUMERIC_VEC.push(Arc::new(Mutex::new(ocr)));
+                }) {
+                    Ok(_) => (),
+                    Err(why) => {
+                        error!("Failed to create Tesseract (numeric): {:?}", why);
+                    }
+                }
             }
         }
         thread::sleep(tokio::time::Duration::from_millis(500));
