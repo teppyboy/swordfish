@@ -1,5 +1,6 @@
 use crate::helper;
 use crate::katana;
+use crate::tesseract;
 use crate::utils;
 use crate::CONFIG;
 use serenity::framework::standard::CommandResult;
@@ -294,6 +295,23 @@ pub async fn dbg_message(ctx: &Context, msg: &Message) -> CommandResult {
             content
         ),
         Some("Message information".to_string()),
+    )
+    .await;
+    Ok(())
+}
+
+pub async fn dbg_regexify_text(ctx: &Context, msg: &Message) -> CommandResult {
+    let content = msg.content.split_whitespace().collect::<Vec<&str>>()[2..].join(" ");
+    helper::info_message(
+        ctx,
+        msg,
+        format!(
+            "```\n\
+    {}\n\
+    ```",
+            tesseract::utils::regexify_text(&content)
+        ),
+        Some("Regexified Text".to_string()),
     )
     .await;
     Ok(())

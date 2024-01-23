@@ -346,6 +346,8 @@ async fn debug(ctx: &Context, msg: &Message) -> CommandResult {
         "kda" => debug::dbg_kdropanalyze(ctx, msg).await?,
         "embed" => debug::dbg_embed(ctx, msg).await?,
         "message" => debug::dbg_message(ctx, msg).await?,
+        "regexify-text" => debug::dbg_regexify_text(ctx, msg).await?,
+        "regextxt" => debug::dbg_regexify_text(ctx, msg).await?,
         "parse-qingque-atopwl" => debug::dbg_parse_qingque_atopwl(ctx, msg).await?,
         "parse-katana-kc_ow" => debug::dbg_parse_katana_kc_ow(ctx, msg).await?,
         "parse-katana-klu_lookup" => debug::dbg_parse_katana_klu_lookup(ctx, msg).await?,
