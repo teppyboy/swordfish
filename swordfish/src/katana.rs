@@ -211,6 +211,9 @@ fn regexify_text(text: &String) -> String {
         }
         prev_chars.push(c);
     }
+    if ascii_text.ends_with(|c: char| c.is_ascii_digit()) {
+        ascii_text.pop();
+    }
     // Filter for short string.
     if short_text && !ascii_text.contains(|c: char| c.is_whitespace()) {
         regex.push_str("^");
@@ -275,7 +278,11 @@ fn regexify_text(text: &String) -> String {
             }
         } else {
             // Do not push word boundary if the word contains special characters like "!"
-            if processed_word.contains(|c: char| c.is_ascii_alphanumeric()) {
+            trace!("Current processed word: {}", processed_word);
+            if processed_word
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric())
+            {
                 regex.push_str(format!("\\b{}\\b", &processed_word.as_str()).as_str());
             } else {
                 regex.push_str(format!("{}", &processed_word.as_str()).as_str());
