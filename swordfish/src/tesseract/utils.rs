@@ -162,8 +162,8 @@ pub fn regexify_text(text: &String) -> String {
         // The character "0" is sometimes used in place of "O" in names
         if ['0', 'O'].contains(&c) {
             ascii_text.push_str("[0O]");
-        } else if ['u', 'v'].contains(&c) {
-            ascii_text.push_str("[uv]");
+        } else if ['u', 'v', 'y'].contains(&c) {
+            ascii_text.push_str("[uvy]");
         } else if ['t'].contains(&c) {
             ascii_text.push_str("[ti]");
         } else if ['I', 'l', '!', '1'].contains(&c) {
