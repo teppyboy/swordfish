@@ -195,6 +195,7 @@ pub fn regexify_text(text: &String) -> String {
     }
     // Filter for short string.
     if short_text && !ascii_text.contains(|c: char| c.is_whitespace()) {
+        ascii_text = ascii_text.to_lowercase();
         regex.push_str("^");
         let mut request_quantifier: bool = false;
         let mut regex_any: bool = false;
@@ -210,6 +211,7 @@ pub fn regexify_text(text: &String) -> String {
                 continue;
             } else if i == ascii_text.len() - 1 {
                 regex.push_str(".*");
+                regex.push(char);
             }
             if regex_any {
                 if char == ']' {
