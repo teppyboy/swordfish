@@ -1,5 +1,8 @@
 use crate::database;
+use crate::error;
 use crate::structs::Character;
+use mongodb::bson;
+use mongodb::bson::doc;
 use mongodb::Collection;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::OnceCell;
@@ -53,6 +56,162 @@ pub async fn query_character_regex(name: &String, series: &String) -> Option<Cha
         )
         .await
         .unwrap()
+}
+
+async fn query_characters_regex_internal(
+    stage1: bson::Document,
+    names: Vec<&String>,
+    series: Vec<&String>,
+) -> Result<Vec<Option<Character>>, String> {
+    let mut pipeline = vec![
+        // Stage 1: Optimize query by doing indexed query.
+        stage1, // Stage 2: Filter out characters that don't match the series
+               // Will be filled later on.
+    ];
+    let mut characters = doc! {
+        "character1": [
+            {
+                "$match": {
+                    "name": {
+                        "$regex": names[0],
+                        "$options": "i"
+                    },
+                    "series": {
+                        "$regex": series[0],
+                        "$options": "i"
+                    }
+                }
+            }
+        ],
+        "character2": [
+            {
+                "$match": {
+                    "name": {
+                        "$regex": names[1],
+                        "$options": "i"
+                    },
+                    "series": {
+                        "$regex": series[1],
+                        "$options": "i"
+                    }
+                }
+            }
+        ],
+        "character3": [
+            {
+                "$match": {
+                    "name": {
+                        "$regex": names[2],
+                        "$options": "i"
+                    },
+                    "series": {
+                        "$regex": series[2],
+                        "$options": "i"
+                    }
+                }
+            }
+        ]
+    };
+    if names.len() == 4 {
+        characters.insert(
+            "character4",
+            doc! {
+                "$match": {
+                    "name": {
+                        "$regex": names[3],
+                        "$options": "i"
+                    },
+                    "series": {
+                        "$regex": series[3],
+                        "$options": "i"
+                    }
+                }
+            },
+        );
+    }
+    let stage2 = doc! {
+        "$facet": characters
+    };
+    pipeline.push(stage2);
+    let mut characters: Vec<Option<Character>> = Vec::new();
+    let result = KATANA.get().unwrap().aggregate(pipeline, None).await;
+    match result {
+        Ok(mut cursor) => {
+            while cursor.advance().await.unwrap() {
+                match cursor.deserialize_current() {
+                    Ok(doc) => {
+                        characters.push(Some(bson::from_document::<Character>(doc).unwrap()));
+                    }
+                    Err(e) => {
+                        error!("Failed to get document: {}", e);
+                        characters.push(None)
+                    }
+                }
+             }
+        }
+        Err(e) => {
+            error!("Failed to get cursor: {}", e);
+            return Err(format!("Failed to get cursor: {}", e));
+        }
+    }
+    Ok(characters)
+}
+
+///
+/// Queries the database for characters with the same first letter in the name.
+///
+pub async fn query_characters_regex_same_name(
+    names: Vec<&String>,
+    series: Vec<&String>,
+) -> Result<Vec<Option<Character>>, String> {
+    // Stage 1: Optimize query by querying character names that start with the same letter
+    let stage1 = doc! {
+        "$match": {
+            "name": {
+                "$regex": format!("^{}", names[0][0..1].to_string()),
+            },
+        }
+    };
+    query_characters_regex_internal(stage1, names, series).await
+}
+
+///
+/// Queries the database for characters with the same first letter in the series.
+///
+pub async fn query_characters_regex_same_series(
+    names: Vec<&String>,
+    series: Vec<&String>,
+) -> Result<Vec<Option<Character>>, String> {
+    // Stage 1: Optimize query by querying character series that start with the same letter
+    let stage1 = doc! {
+        "$match": {
+            "series": {
+                "$regex": format!("^{}", series[0][0..1].to_string()),
+            },
+        }
+    };
+    query_characters_regex_internal(stage1, names, series).await
+}
+
+///
+/// Queries the database for characters with the same first letter in the name and series.
+///
+pub async fn query_characters_regex_same_name_series(
+    names: Vec<&String>,
+    series: Vec<&String>,
+) -> Result<Vec<Option<Character>>, String> {
+    // Stage 1: Optimize query by querying character name and series that start with the same letter
+    let stage1 = doc! {
+        "$match": {
+            "name": {
+                "$regex": format!("^{}", names[0][0..1].to_string()),
+            },
+            "series": {
+                "$regex": format!("^{}", series[0][0..1].to_string()),
+            },
+        }
+    };
+    query_characters_regex_internal(stage1, names, series).await
 }
 
 pub async fn write_character(mut card: Character) -> Result<(), String> {
