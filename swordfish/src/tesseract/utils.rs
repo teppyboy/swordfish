@@ -101,7 +101,7 @@ pub fn fix_tesseract_string(text: &mut String) {
     }
     // Remove all non-alphanumeric characters
     trace!("Text: {}", text);
-    text.retain(|c| ALLOWED_CHARS.contains(&c) || c.is_ascii_alphanumeric());
+    text.retain(|c| ALLOWED_CHARS.binary_search(&c).is_ok() || c.is_ascii_alphanumeric());
     // Fix "mn" -> "III"
     trace!("Text: {}", text);
     if text.ends_with("mn") {
@@ -160,15 +160,15 @@ pub fn regexify_text(text: &String) -> String {
     for c in text.chars() {
         // Here comes the workaround...
         // The character "0" is sometimes used in place of "O" in names
-        if ['0', 'O'].contains(&c) {
+        if ['0', 'O'].binary_search(&c).is_ok() {
             ascii_text.push_str("[0O]");
-        } else if ['u', 'v', 'y'].contains(&c) {
+        } else if ['u', 'v', 'y'].binary_search(&c).is_ok() {
             ascii_text.push_str("[uvy]");
-        } else if ['t'].contains(&c) {
+        } else if ['t'].binary_search(&c).is_ok() {
             ascii_text.push_str("[ti]");
-        } else if ['I', 'l', '!', '1'].contains(&c) {
+        } else if ['I', 'l', '!', '1'].binary_search(&c).is_ok() {
             ascii_text.push_str("[Il!1i]");
-        } else if ['.'].contains(&c) {
+        } else if ['.'].binary_search(&c).is_ok() {
             if prev_chars.len() > 3 {
                 let prev_char = prev_chars[prev_chars.len() - 1];
                 let prev_prev_char = prev_chars[prev_chars.len() - 2];
@@ -177,12 +177,14 @@ pub fn regexify_text(text: &String) -> String {
                 }
             }
             ascii_text.push(' ');
-        } else if ['R'].contains(&c) {
+        } else if ['R'].binary_search(&c).is_ok() {
             ascii_text.push_str("[Rk]");
-        } else if ['m'].contains(&c) {
+        } else if ['m'].binary_search(&c).is_ok() {
             ascii_text.push_str("(m|ra)");
-        } else if ['a'].contains(&c) {
+        } else if ['a'].binary_search(&c).is_ok() {
             ascii_text.push_str("[ao]")
+        } else if ['H', 'E'].binary_search(&c).is_ok() {
+            ascii_text.push_str("[HE]")
         } else if c.is_ascii_alphanumeric() {
             ascii_text.push(c);
         } else {
@@ -212,6 +214,7 @@ pub fn regexify_text(text: &String) -> String {
             } else if i == ascii_text.len() - 1 {
                 regex.push_str(".*");
                 regex.push(char);
+                break;
             }
             if regex_any {
                 if char == ']' {
@@ -249,9 +252,9 @@ pub fn regexify_text(text: &String) -> String {
         trace!("Processed word: {}", processed_word);
         if partial_match && processed_word.len() > 4 {
             // Remove first two and last two characters for "partial match"
-            if !processed_word[0..3].contains(|c: char| REGEX_CHARS.contains(&c))
+            if !processed_word[0..3].contains(|c: char| REGEX_CHARS.binary_search(&c).is_ok())
                 && !processed_word[word.len() - 2..word.len()]
-                    .contains(|c: char| REGEX_CHARS.contains(&c))
+                    .contains(|c: char| REGEX_CHARS.binary_search(&c).is_ok())
             {
                 regex.push_str(&processed_word[2..word.len() - 2]);
             } else {
