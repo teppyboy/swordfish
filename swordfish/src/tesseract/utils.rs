@@ -212,6 +212,7 @@ pub fn regexify_text(text: &String) -> String {
             } else if i == ascii_text.len() - 1 {
                 regex.push_str(".*");
                 regex.push(char);
+                break;
             }
             if regex_any {
                 if char == ']' {
