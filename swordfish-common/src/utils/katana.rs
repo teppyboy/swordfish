@@ -311,6 +311,10 @@ pub fn parse_cards_from_calf_analysis(content: &String) -> Vec<Character> {
                     None => {}
                 }
                 name_string.remove_matches("**");
+                let open_square_bracket = name_string.rfind('[');
+                if name_string.contains("-PRINT]") && open_square_bracket.is_some() {
+                    name_string.drain((open_square_bracket.unwrap() - 1)..);
+                }
                 name_string
             }
             None => continue,

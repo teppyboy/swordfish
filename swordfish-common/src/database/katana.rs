@@ -147,7 +147,7 @@ async fn query_characters_regex_internal(
                         characters.push(None)
                     }
                 }
-             }
+            }
         }
         Err(e) => {
             error!("Failed to get cursor: {}", e);
