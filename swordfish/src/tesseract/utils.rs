@@ -170,6 +170,8 @@ pub fn regexify_text(text: &String) -> String {
             ascii_text.push_str("[Il!1i]");
         } else if ['o', 'c'].contains(&c) {
             ascii_text.push_str("[oc]");
+        } else if ['é', 'á', 'd'].contains(&c) {
+            ascii_text.push_str("[éád]");
         } else if ['.'].contains(&c) {
             if prev_chars.len() > 3 {
                 let prev_char = prev_chars[prev_chars.len() - 1];
