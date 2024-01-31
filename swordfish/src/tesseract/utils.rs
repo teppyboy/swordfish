@@ -168,6 +168,8 @@ pub fn regexify_text(text: &String) -> String {
             ascii_text.push_str("[ti]");
         } else if ['I', 'l', '!', '1'].contains(&c) {
             ascii_text.push_str("[Il!1i]");
+        } else if ['o', 'c'].contains(&c) {
+            ascii_text.push_str("[oc]");
         } else if ['.'].contains(&c) {
             if prev_chars.len() > 3 {
                 let prev_char = prev_chars[prev_chars.len() - 1];
