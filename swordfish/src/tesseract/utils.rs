@@ -263,11 +263,15 @@ pub fn regexify_text(text: &String) -> String {
             if !p_word_unicode[0..3]
                 .iter()
                 .any(|c: &&str| REGEX_STRINGS.contains(&c))
-                && !p_word_unicode[word.len() - 2..word.len()]
+                && !p_word_unicode[p_word_unicode.len() - 2..p_word_unicode.len()]
                     .iter()
                     .any(|c: &&str| REGEX_STRINGS.contains(&c))
             {
-                regex.push_str(p_word_unicode[2..word.len() - 2].concat().as_str());
+                regex.push_str(
+                    p_word_unicode[2..p_word_unicode.len() - 2]
+                        .concat()
+                        .as_str(),
+                );
             } else {
                 regex.push_str(&processed_word.as_str());
             }
@@ -277,7 +281,7 @@ pub fn regexify_text(text: &String) -> String {
             if processed_word.chars().all(|c| c.is_ascii_alphanumeric()) {
                 regex.push_str(format!("\\b{}\\b", &processed_word.as_str()).as_str());
             } else {
-                regex.push_str(format!("{}", &processed_word.as_str()).as_str());
+                regex.push_str(&processed_word.as_str());
             }
         }
         regex.push_str(")");
