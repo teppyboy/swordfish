@@ -22,4 +22,5 @@ rpath = false
 [profile.release-debug]
 inherits = "release"
 debug = true
+incremental = true
 strip = false

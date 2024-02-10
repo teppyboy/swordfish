@@ -1,9 +1,10 @@
 use swordfish_common::trace;
+use unicode_segmentation::UnicodeSegmentation;
 
 const ALLOWED_CHARS: [char; 14] = [
     ' ', '-', '.', '!', ':', '(', ')', '\'', '/', '\'', '@', '&', '_', 'é',
 ];
-const REGEX_CHARS: [char; 4] = ['[', ']', ')', '('];
+const REGEX_STRINGS: [&str; 4] = ["[", "]", ")", "("];
 
 fn replace_string(text: &mut String, from: &str, to: &str) -> bool {
     match text.find(from) {
@@ -49,6 +50,10 @@ pub fn fix_tesseract_string(text: &mut String) {
     // This is usually the corner of the card
     trace!("Text: {}", text);
     replace_string(text, "A\n", "");
+    // Workaround for ' qugnd' -> ' Grand'
+    // As in Grandfather
+    trace!("Text: {}", text);
+    replace_string(text, "\nqugnd", "\nGrand");
     // Workaround for '“NO'
     // This is usually the left bottom corner of the card
     trace!("Text: {}", text);
@@ -251,14 +256,18 @@ pub fn regexify_text(text: &String) -> String {
         }
         regex.push_str("(?=.*");
         let processed_word = word.to_lowercase();
+        let p_word_unicode = processed_word.graphemes(true).collect::<Vec<&str>>();
         trace!("Processed word: {}", processed_word);
-        if partial_match && processed_word.len() > 4 {
+        if partial_match && p_word_unicode.len() > 4 {
             // Remove first two and last two characters for "partial match"
-            if !processed_word[0..3].contains(|c: char| REGEX_CHARS.contains(&c))
-                && !processed_word[word.len() - 2..word.len()]
-                    .contains(|c: char| REGEX_CHARS.contains(&c))
+            if !p_word_unicode[0..3]
+                .iter()
+                .any(|c: &&str| REGEX_STRINGS.contains(&c))
+                && !p_word_unicode[word.len() - 2..word.len()]
+                    .iter()
+                    .any(|c: &&str| REGEX_STRINGS.contains(&c))
             {
-                regex.push_str(&processed_word[2..word.len() - 2]);
+                regex.push_str(p_word_unicode[2..word.len() - 2].concat().as_str());
             } else {
                 regex.push_str(&processed_word.as_str());
             }

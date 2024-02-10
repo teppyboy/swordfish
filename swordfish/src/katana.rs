@@ -21,7 +21,7 @@ const CARD_NAME_HEIGHT: u32 = 70 - CARD_NAME_Y_OFFSET;
 const CARD_SERIES_X_OFFSET: u32 = 22;
 const CARD_SERIES_Y_OFFSET: u32 = 278;
 const CARD_SERIES_WIDTH: u32 = 206 - CARD_SERIES_X_OFFSET;
-const CARD_SERIES_HEIGHT: u32 = 330 - CARD_SERIES_Y_OFFSET;
+const CARD_SERIES_HEIGHT: u32 = 328 - CARD_SERIES_Y_OFFSET;
 
 fn save_image_if_trace(img: &DynamicImage, path: &str) {
     let log_lvl = CONFIG.get().unwrap().log.level.as_str();
