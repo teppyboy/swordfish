@@ -44,7 +44,7 @@ pub async fn query_character(name: &String, series: &String) -> Option<Character
 }
 
 pub async fn query_character_regex(name: &String, series: &String) -> Option<Character> {
-    KATANA
+    match KATANA
         .get()
         .unwrap()
         .find_one(
@@ -55,7 +55,13 @@ pub async fn query_character_regex(name: &String, series: &String) -> Option<Cha
             None,
         )
         .await
-        .unwrap()
+    {
+        Ok(character) => character,
+        Err(e) => {
+            error!("Failed to get character: {}", e);
+            None
+        }
+    }
 }
 
 async fn query_characters_regex_internal(
