@@ -11,7 +11,7 @@ image = "0.24.7"
 leptess = "0.14.0"
 rusty-tesseract = "1.1.9"
 serde = "1.0.193"
-serenity = { version = "0.12.0", features = ["builder"] }
+serenity = { version = "0.12.0", features = ["builder", "full"] }
 tokio = { version = "1.35.1", features = ["full"] }
 toml = "0.8.8"
 unicode-segmentation = "1.11.0"
