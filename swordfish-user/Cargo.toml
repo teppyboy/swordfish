@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 dotenvy = "0.15.7"
-serenity = { git = "https://github.com/nshout/serenity-self", version = "0.13.0-alpha2" }
+serenity_self = { git = "https://github.com/seradotflac/serenity-self", version = "0.13.0-alpha2" }
 
 
 [dependencies.swordfish-common]

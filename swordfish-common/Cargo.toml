@@ -13,5 +13,5 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 [dependencies.mongodb]
-version = "2.8.0"
-features = ["tokio-runtime"]
+version = "3.5.1"
+features = ["bson-3", "dns-resolver"]

@@ -35,7 +35,7 @@ pub async fn init() {
     }
     let client = Client::with_options(options).unwrap();
     let db = client.database("swordfish");
-    db.run_command(doc! { "ping": 1 }, None)
+    db.run_command(doc! { "ping": 1 })
         .await
         .expect("Failed to connect to MongoDB");
     MONGO_DATABASE.set(db).unwrap();

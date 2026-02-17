@@ -37,7 +37,6 @@ pub async fn query_character(name: &String, series: &String) -> Option<Character
                 "name": name,
                 "series": series
             },
-            None,
         )
         .await
         .unwrap()
@@ -52,7 +51,6 @@ pub async fn query_character_regex(name: &String, series: &String) -> Option<Cha
                 "name": {"$regex": name, "$options" : "i"},
                 "series": {"$regex": series, "$options" : "i"}
             },
-            None,
         )
         .await
     {
@@ -140,13 +138,13 @@ async fn query_characters_regex_internal(
     };
     pipeline.push(stage2);
     let mut characters: Vec<Option<Character>> = Vec::new();
-    let result = KATANA.get().unwrap().aggregate(pipeline, None).await;
+    let result = KATANA.get().unwrap().aggregate(pipeline).await;
     match result {
         Ok(mut cursor) => {
             while cursor.advance().await.unwrap() {
                 match cursor.deserialize_current() {
                     Ok(doc) => {
-                        characters.push(Some(bson::from_document::<Character>(doc).unwrap()));
+                        characters.push(Some(bson::deserialize_from_document::<Character>(doc).unwrap()));
                     }
                     Err(e) => {
                         error!("Failed to get document: {}", e);
@@ -229,7 +227,6 @@ pub async fn write_character(mut card: Character) -> Result<(), String> {
                 "name": card.name.clone(),
                 "series": card.series.clone()
             },
-            None,
         )
         .await
         .unwrap();
@@ -248,7 +245,6 @@ pub async fn write_character(mut card: Character) -> Result<(), String> {
                     "series": card.series.clone()
                 },
                 card,
-                None,
             )
             .await
         {
@@ -260,7 +256,7 @@ pub async fn write_character(mut card: Character) -> Result<(), String> {
             }
         }
     } else {
-        match KATANA.get().unwrap().insert_one(card, None).await {
+        match KATANA.get().unwrap().insert_one(card).await {
             Ok(_) => {
                 return Ok(());
             }
@@ -288,7 +284,6 @@ pub async fn write_characters(cards: Vec<Character>) -> Result<(), String> {
                         "name": card.name.clone(),
                         "series": card.series.clone()
                     },
-                    None,
                 )
                 .await
                 .unwrap();
@@ -303,7 +298,6 @@ pub async fn write_characters(cards: Vec<Character>) -> Result<(), String> {
                             "series": card.series.clone()
                         },
                         card,
-                        None,
                     )
                     .await
                 {
@@ -332,7 +326,7 @@ pub async fn write_characters(cards: Vec<Character>) -> Result<(), String> {
         }
     }
     if new_cards.len() > 0 {
-        match KATANA.get().unwrap().insert_many(new_cards, None).await {
+        match KATANA.get().unwrap().insert_many(new_cards).await {
             Ok(_) => {
                 return Ok(());
             }

@@ -55,3 +55,8 @@ It'd be the same as Nori in general.
 [GNU AGPLv3](./LICENSE)
 
 ![GNU AGPL](https://www.gnu.org/graphics/agplv3-with-text-162x68.png)
+
+## Additional Information
+
+> [!NOTE]
+> To a certain bot developers, I don't care about your bot and this is a helper for another bot not yours. Although this bot uses some code from "Nori" which is a helper for your bot, I don't plan to associate myself with your bot, thanks :)
